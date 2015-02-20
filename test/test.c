@@ -9,22 +9,27 @@ int log_callback(const char * file, const char * tag, const char * level, int li
 }
 
 int test_get_interface_list() {
-    puts("\n02. lssdp_get_interface_list");
+    puts("\n02. lssdp_get_network_interface");
 
-    lssdp_interface interface[16] = {};
-    int ret = lssdp_get_interface_list(interface, 16);
+    lssdp_ctx lssdp = {};
+    int ret = lssdp_get_network_interface(&lssdp);
     if (ret != 0) {
         return -1;
     }
 
     int i;
-    for (i = 0; i < 16 && strlen(interface[i].name) > 0; i++) {
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        // no more network interface
+        if (strlen(lssdp.interface[i].name) <= 0) {
+            break;
+        }
+
         printf("%s : %d.%d.%d.%d\n",
-            interface[i].name,
-            interface[i].ip[0],
-            interface[i].ip[1],
-            interface[i].ip[2],
-            interface[i].ip[3]
+            lssdp.interface[i].name,
+            lssdp.interface[i].ip[0],
+            lssdp.interface[i].ip[1],
+            lssdp.interface[i].ip[2],
+            lssdp.interface[i].ip[3]
         );
     }
     puts("");

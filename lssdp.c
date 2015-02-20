@@ -18,6 +18,7 @@
 #define LSSDP_MESSAGE_MAX_LEN 2048
 
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
+#define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
@@ -33,20 +34,17 @@ int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag,
     return 0;
 }
 
-// 02. lssdp_get_interface_list
-int lssdp_get_interface_list(lssdp_interface interface_list[], size_t interface_list_size) {
-    if (interface_list == NULL) {
-        lssdp_error("interface_list should not be NULL\n");
+// 02. lssdp_get_network_interface
+int lssdp_get_network_interface(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
         return -1;
     }
 
-    if (interface_list_size == 0) {
-        lssdp_error("interface_list_size should not be 0\n");
-        return -1;
-    }
+    // reset lssdp->interface
+    memset(lssdp->interface, 0, sizeof(struct lssdp_interface) * LSSDP_INTERFACE_LIST_SIZE);
 
-    // reset interface_list
-    memset(interface_list, 0, sizeof(lssdp_interface) * interface_list_size);
+    int result = -1;
 
     /* Reference to this article:
      * http://stackoverflow.com/a/8007079
@@ -56,11 +54,8 @@ int lssdp_get_interface_list(lssdp_interface interface_list[], size_t interface_
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
         lssdp_error("create socket failed, errno = %s (%d)\n", strerror(errno), errno);
-        return -1;
+        goto end;
     }
-
-    /* result */
-    int result = -1;
 
     char buffer[4096] = {0};
     struct ifconf ifc = {
@@ -73,46 +68,49 @@ int lssdp_get_interface_list(lssdp_interface interface_list[], size_t interface_
         goto end;
     }
 
-    size_t index = 0;           // interface index
-    size_t buffer_index = 0;
-    while (index < interface_list_size && buffer_index <= ifc.ifc_len) {
-        struct ifreq * ifr = (struct ifreq *)(buffer + buffer_index);
+    size_t index, num = 0;
+    struct ifreq * ifr;
+    for (index = 0; index < ifc.ifc_len; index += _SIZEOF_ADDR_IFREQ(*ifr)) {
+        ifr = (struct ifreq *)(buffer + index);
+        if (ifr->ifr_addr.sa_family != AF_INET) {
+            // only support IPv4
+            continue;
+        }
 
-        /* IPv4 */
-        if (ifr->ifr_addr.sa_family == AF_INET) {
+        // get interface ip string
+        char ip[16] = {0};  // ip = "xxx.xxx.xxx.xxx"
+        struct sockaddr_in * addr_in = (struct sockaddr_in *) &ifr->ifr_addr;
+        if (inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)) == NULL) {
+            lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
+            goto end;
+        }
 
-            // 1. set interface name
-            snprintf(interface_list[index].name, LSSDP_INTERFACE_NAME_LEN - 1, "%s", ifr->ifr_name);
+        // too many network interface
+        if (num >= LSSDP_INTERFACE_LIST_SIZE) {
+            lssdp_warn("the number of network interface is over than max size %d\n", LSSDP_INTERFACE_LIST_SIZE);
+            lssdp_debug("%2d. %s : %s\n", num, ifr->ifr_name, ip);
+        } else {
+            // 1. set interface.name
+            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN - 1, "%s", ifr->ifr_name);
 
-            // 2. set interface ip
-            char ip[16] = {0};  // ip = "xxx.xxx.xxx.xxx"
-            struct sockaddr_in * addr_in = (struct sockaddr_in *) &ifr->ifr_addr;
-            if (inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)) == NULL) {
-                lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
-                goto end;
-            }
-
-            // interface[index].ip = [ xxx, xxx, xxx, xxx ]
+            // 2. set interface.ip = [ xxx, xxx, xxx, xxx ]
             char * token_ptr;
             size_t i;
             for (i = 0; i < 4; i++) {
-                char * number_str = strtok_r(i == 0 ? ip : NULL, ".", &token_ptr);
-                interface_list[index].ip[i] = atoi(number_str);
+                lssdp->interface[num].ip[i] = atoi(strtok_r(i == 0 ? ip : NULL, ".", &token_ptr));
             }
-            index++;
         }
 
-        /* TODO: IPv6 */
-
-        // increase buffer_index
-        buffer_index += _SIZEOF_ADDR_IFREQ(*ifr);
+        // increase interface number
+        num++;
     }
 
     result = 0;
 end:
-    close(fd);
+    if (fd > 0) close(fd);
     return result;
 }
+
 
 /** Internal Function **/
 

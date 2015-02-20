@@ -1,6 +1,19 @@
 #ifndef __LSSDP_H
 #define __LSSDP_H
 
+/* struct : lssdp_ctx */
+#define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
+#define LSSDP_INTERFACE_LIST_SIZE   16
+
+typedef struct lssdp_ctx {
+    // Network Interface
+    struct lssdp_interface {
+        char            name    [LSSDP_INTERFACE_NAME_LEN]; // name[16]
+        unsigned char   ip      [4];                        // ip = [ 127, 0, 0, 1 ]
+    } interface[LSSDP_INTERFACE_LIST_SIZE];                 // interface[16]
+
+} lssdp_ctx;
+
 /*
  * 01. lssdp_set_log_callback
  *
@@ -9,21 +22,13 @@
  */
 int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
 
-/* struct : lssdp_interface */
-#define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
-typedef struct lssdp_interface {
-    char            name    [LSSDP_INTERFACE_NAME_LEN];
-    unsigned char   ip      [4];        // ip = [ 127, 0, 0, 1 ]
-} lssdp_interface;
-
 /*
- * 02. lssdp_get_interface_list
+ * 02. lssdp_get_network_interface
  *
- * @param interface_list
- * @param list_size
+ * @param lssdp
  * @return = 0      success
  *         < 0      failed
  */
-int lssdp_get_interface_list(lssdp_interface interface_list[], size_t list_size);
+int lssdp_get_network_interface(lssdp_ctx * lssdp);
 
 #endif
