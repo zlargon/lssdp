@@ -111,6 +111,71 @@ end:
     return result;
 }
 
+// 03. lssdp_create_socket
+int lssdp_create_socket(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
+    if (lssdp->sock >= 0) {
+        lssdp_debug("close socket %d\n", lssdp->sock);
+        close(lssdp->sock);
+        lssdp->sock = -1;
+    }
+
+    // create UDP socket
+    lssdp->sock = socket(PF_INET, SOCK_DGRAM, 0);
+    if (lssdp->sock < 0) {
+        lssdp_error("create socket failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
+    }
+
+    int result = -1;
+
+    // set non-blocking
+    int opt = 1;
+    if (ioctl(lssdp->sock, FIONBIO, &opt) != 0) {
+        lssdp_error("ioctl failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // set reuse address
+    if (setsockopt(lssdp->sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
+        lssdp_error("setsockopt SO_REUSEADDR failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // bind socket
+    struct sockaddr_in addr = {
+        .sin_family      = AF_INET,
+        .sin_port        = htons(lssdp->port),
+        .sin_addr.s_addr = htonl(INADDR_ANY)
+    };
+    if (bind(lssdp->sock, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+        lssdp_error("bind failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // set IP_ADD_MEMBERSHIP
+    struct ip_mreq imr = {
+        .imr_multiaddr.s_addr = inet_addr("239.255.255.250"),
+        .imr_interface.s_addr = htonl(INADDR_ANY)
+    };
+    if (setsockopt(lssdp->sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &imr, sizeof(struct ip_mreq)) != 0) {
+        lssdp_error("setsockopt IP_ADD_MEMBERSHIP failed: %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    result = 0;
+end:
+    if (result == -1) {
+        close(lssdp->sock);
+        lssdp->sock = -1;
+    }
+    return result;
+}
+
 
 /** Internal Function **/
 

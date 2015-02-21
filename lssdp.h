@@ -12,6 +12,9 @@ typedef struct lssdp_ctx {
         unsigned char   ip      [4];                        // ip = [ 127, 0, 0, 1 ]
     } interface[LSSDP_INTERFACE_LIST_SIZE];                 // interface[16]
 
+    int port;
+    int sock;
+
 } lssdp_ctx;
 
 /*
@@ -30,5 +33,14 @@ int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag,
  *         < 0      failed
  */
 int lssdp_get_network_interface(lssdp_ctx * lssdp);
+
+/*
+ * 03. lssdp_create_socket
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_create_socket(lssdp_ctx * lssdp);
 
 #endif
