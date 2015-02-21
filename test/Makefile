@@ -6,9 +6,12 @@ endif
 
 OBJS = ../lssdp.o
 
-all: test
+all: test interface_monitor
 
 test: $(OBJS) test.o
+	$(CC) $(CFLAGS) -o $@.exe $@.o $(OBJS)
+
+interface_monitor: $(OBJS) interface_monitor.o
 	$(CC) $(CFLAGS) -o $@.exe $@.o $(OBJS)
 
 clean:
