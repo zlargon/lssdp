@@ -15,6 +15,8 @@ typedef struct lssdp_ctx {
     int port;
     int sock;
 
+    int (* data_callback)(const struct lssdp_ctx * lssdp, const char * data, size_t data_len);
+
 } lssdp_ctx;
 
 /*
@@ -42,5 +44,14 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp);
  *         < 0      failed
  */
 int lssdp_create_socket(lssdp_ctx * lssdp);
+
+/*
+ * 04. lssdp_read_socket
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_read_socket(lssdp_ctx * lssdp);
 
 #endif

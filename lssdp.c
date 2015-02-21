@@ -176,6 +176,30 @@ end:
     return result;
 }
 
+// 04. lssdp_read_socket
+int lssdp_read_socket(lssdp_ctx * lssdp) {
+    char buffer[2048] = {};
+    struct sockaddr_in address = {};
+    socklen_t address_len = sizeof(struct sockaddr_in);
+
+    ssize_t recv_len = recvfrom(lssdp->sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&address, &address_len);
+    if (recv_len == -1) {
+        lssdp_error("recvfrom failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
+    }
+
+    // TODO: parse SSDP packet to struct
+
+    if (lssdp->data_callback == NULL) {
+        lssdp_warn("data_callback has not been setup\n");
+        return 0;
+    }
+
+    // invoke data received callback
+    lssdp->data_callback(lssdp, buffer, recv_len);
+    return 0;
+}
+
 
 /** Internal Function **/
 

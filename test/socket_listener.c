@@ -9,11 +9,17 @@
  *
  * 1. create SSDP socket with port 1900
  * 2. select SSDP socket with timeout 1 seconds
- * 3. when select return value > 0, read socket and show received data
+ * 3. when select return value > 0, call function lssdp_read_socket
+ * 4. data will be return in sspd_data_callback
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
     printf("[%s][%s] %s: %s", level, tag, func, message);
+    return 0;
+}
+
+int ssdp_data_callback(const lssdp_ctx * lssdp, const char * data, size_t data_len) {
+    printf("%s\n", data);
     return 0;
 }
 
@@ -22,7 +28,8 @@ int main() {
 
     lssdp_ctx lssdp = {
         .sock = -1,
-        .port = 1900
+        .port = 1900,
+        .data_callback = ssdp_data_callback
     };
 
     if (lssdp_create_socket(&lssdp) != 0) {
@@ -51,12 +58,7 @@ int main() {
             continue;
         }
 
-        char buffer[2048] = {};
-        struct sockaddr_in address = {};
-        socklen_t address_len = sizeof(struct sockaddr_in);
-        ssize_t recv_len = recvfrom(lssdp.sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&address, &address_len);
-
-        printf("Received Packet (%zd):\n%s\n", recv_len, buffer);
+        lssdp_read_socket(&lssdp);
     }
 
     return EXIT_SUCCESS;
