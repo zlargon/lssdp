@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>      // isprint, isspace
 #include <errno.h>
 
 #include <unistd.h>     // close
@@ -56,6 +57,7 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
 static int get_colon_index(const char * string, size_t start, size_t end);
+static int trim_spaces(const char * string, size_t * start, size_t * end);
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 
 
@@ -474,7 +476,28 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
         return -1;
     }
 
-    // TODO: get field, field_len, value, value_len
+
+    // 2. get field, field_len
+    size_t i = start;
+    size_t j = colon - 1;
+    if (trim_spaces(data, &i, &j) == -1) {
+        return -1;
+    }
+    const char * field = &data[i];
+    size_t field_len = j - i + 1;
+
+
+    // 3. get value, value_len
+    i = colon + 1;
+    j = end;
+    if (trim_spaces(data, &i, &j) == -1) {
+        return -1;
+    };
+    const char * value = &data[i];
+    size_t value_len = j - i + 1;
+
+
+    // TODO: 4. set each field's value to packet
 
     return 0;
 }
@@ -487,6 +510,22 @@ static int get_colon_index(const char * string, size_t start, size_t end) {
         }
     }
     return -1;
+}
+
+static int trim_spaces(const char * string, size_t * start, size_t * end) {
+    int i = *start;
+    int j = *end;
+
+    while (i <= *end   && (!isprint(string[i]) || isspace(string[i]))) i++;
+    while (j >= *start && (!isprint(string[j]) || isspace(string[j]))) j--;
+
+    if (i > j) {
+        return -1;
+    }
+
+    *start = i;
+    *end   = j;
+    return 0;
 }
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
