@@ -19,6 +19,24 @@
 #define LSSDP_MESSAGE_MAX_LEN   2048
 #define LSSDP_MULTICAST_ADDR    "239.255.255.250"
 
+/* struct: lssdp_packet */
+typedef struct lssdp_packet {
+    char            method      [LSSDP_HEADER_FIELD_LEN];   // M-SEARCH, NOTIFY, RESPONSE
+    char            st          [LSSDP_HEADER_FIELD_LEN];   // Search Target
+    char            usn         [LSSDP_HEADER_FIELD_LEN];   // Unique Service Name
+    char            location    [LSSDP_HEADER_FIELD_LEN];   // Location
+
+    /* Additional SSDP Header Fields */
+    char            sm_id       [LSSDP_HEADER_FIELD_LEN];
+    char            device_type [LSSDP_HEADER_FIELD_LEN];
+    unsigned long   update_time;
+} lssdp_packet;
+
+// SSDP Method
+static const char * LSSDP_MSEARCH  = "M-SEARCH";
+static const char * LSSDP_NOTIFY   = "NOTIFY";
+static const char * LSSDP_RESPONSE = "RESPONSE";
+
 // SSDP Method Header
 static const char * LSSDP_MSEARCH_HEADER  = "M-SEARCH * HTTP/1.1\r\n";
 static const char * LSSDP_NOTIFY_HEADER   = "NOTIFY * HTTP/1.1\r\n";
@@ -35,6 +53,8 @@ static const char * LSSDP_UDA_v1_1 =
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
 static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
+static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
+static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 
 
@@ -389,6 +409,53 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
 end:
     if (fd > 0) close(fd);
     return result;
+}
+
+static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet) {
+    if (data == NULL) {
+        lssdp_error("data should not be NULL\n");
+        return -1;
+    }
+
+    if (data_len != strlen(data)) {
+        lssdp_error("data_len (%zu) is not match to the data length (%zu)\n", data_len, strlen(data));
+        return -1;
+    }
+
+    if (packet == NULL) {
+        lssdp_error("packet should not be NULL\n");
+        return -1;
+    }
+
+    // 1. compare SSDP Method Header: M-SEARCH, NOTIFY, RESPONSE
+    size_t i;
+    if ((i = strlen(LSSDP_MSEARCH_HEADER)) < data_len && memcmp(data, LSSDP_MSEARCH_HEADER, i) == 0) {
+        strcpy(packet->method, LSSDP_MSEARCH);
+    } else if ((i = strlen(LSSDP_NOTIFY_HEADER)) < data_len && memcmp(data, LSSDP_NOTIFY_HEADER, i) == 0) {
+        strcpy(packet->method, LSSDP_NOTIFY);
+    } else if ((i = strlen(LSSDP_RESPONSE_HEADER)) < data_len && memcmp(data, LSSDP_RESPONSE_HEADER, i) == 0) {
+        strcpy(packet->method, LSSDP_RESPONSE);
+    } else {
+        lssdp_warn("received unknown SSDP packet\n");
+        lssdp_debug("%s\n", data);
+        return -1;
+    }
+
+    // 2. parse each field line
+    size_t start = i;
+    for (i = start; i < data_len; i++) {
+        if (data[i] == '\n' && i - 1 > start && data[i - 1] == '\r') {
+            parse_field_line(data, start, i - 2, packet);
+            start = i + 1;
+        }
+    }
+
+    return 0;
+}
+
+static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet) {
+    // TODO
+    return 0;
 }
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
