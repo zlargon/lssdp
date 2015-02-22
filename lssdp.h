@@ -4,9 +4,10 @@
 /* struct : lssdp_ctx */
 #define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
 #define LSSDP_INTERFACE_LIST_SIZE   16
+#define LSSDP_HEADER_FIELD_LEN      256
 
 typedef struct lssdp_ctx {
-    // Network Interface
+    /* Network Interface */
     struct lssdp_interface {
         char            name    [LSSDP_INTERFACE_NAME_LEN]; // name[16]
         unsigned char   ip      [4];                        // ip = [ 127, 0, 0, 1 ]
@@ -14,6 +15,23 @@ typedef struct lssdp_ctx {
 
     int port;
     int sock;
+
+    /* SSDP Header Fields */
+    struct {
+        char        st          [LSSDP_HEADER_FIELD_LEN];   // Search Target
+        char        usn         [LSSDP_HEADER_FIELD_LEN];   // Unique Service Name
+
+        // Location = host + [:port] + [/uri]
+        struct {
+            char    host        [LSSDP_HEADER_FIELD_LEN];   // optional, if host is empty, using each interface IP as default
+            int     port;                                   // optional
+            char    uri         [LSSDP_HEADER_FIELD_LEN];   // optional
+        } location;
+
+        /* Additional SSDP Header Fields */
+        char        sm_id       [LSSDP_HEADER_FIELD_LEN];
+        char        device_type [LSSDP_HEADER_FIELD_LEN];
+    } header;
 
     int (* data_callback)(const struct lssdp_ctx * lssdp, const char * data, size_t data_len);
 
