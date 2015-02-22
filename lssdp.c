@@ -55,6 +55,7 @@ static const char * LSSDP_UDA_v1_1 =
 static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
+static int get_colon_index(const char * string, size_t start, size_t end);
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 
 
@@ -454,8 +455,38 @@ static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet 
 }
 
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet) {
-    // TODO
+    // 1. find the colon
+    if (data[start] == ':') {
+        lssdp_warn("the first character of line should not be colon\n");
+        lssdp_debug("%s\n", data);
+        return -1;
+    }
+
+    int colon = get_colon_index(data, start + 1, end);
+    if (colon == -1) {
+        lssdp_warn("there is no colon in line\n");
+        lssdp_debug("%s\n", data);
+        return -1;
+    }
+
+    if (colon == end) {
+        // value is empty
+        return -1;
+    }
+
+    // TODO: get field, field_len, value, value_len
+
     return 0;
+}
+
+static int get_colon_index(const char * string, size_t start, size_t end) {
+    size_t i;
+    for (i = start; i <= end; i++) {
+        if (string[i] == ':') {
+            return i;
+        }
+    }
+    return -1;
 }
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
