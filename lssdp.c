@@ -15,7 +15,9 @@
 #define _SIZEOF_ADDR_IFREQ sizeof
 #endif
 
-#define LSSDP_MESSAGE_MAX_LEN 2048
+#define LSSDP_IP_LEN            16
+#define LSSDP_MESSAGE_MAX_LEN   2048
+#define LSSDP_MULTICAST_ADDR    "239.255.255.250"
 
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
@@ -78,7 +80,7 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
         }
 
         // get interface ip string
-        char ip[16] = {0};  // ip = "xxx.xxx.xxx.xxx"
+        char ip[LSSDP_IP_LEN] = {0};  // ip = "xxx.xxx.xxx.xxx"
         struct sockaddr_in * addr_in = (struct sockaddr_in *) &ifr->ifr_addr;
         if (inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)) == NULL) {
             lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
@@ -159,7 +161,7 @@ int lssdp_create_socket(lssdp_ctx * lssdp) {
 
     // set IP_ADD_MEMBERSHIP
     struct ip_mreq imr = {
-        .imr_multiaddr.s_addr = inet_addr("239.255.255.250"),
+        .imr_multiaddr.s_addr = inet_addr(LSSDP_MULTICAST_ADDR),
         .imr_interface.s_addr = htonl(INADDR_ANY)
     };
     if (setsockopt(lssdp->sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &imr, sizeof(struct ip_mreq)) != 0) {
