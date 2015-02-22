@@ -19,6 +19,11 @@
 #define LSSDP_MESSAGE_MAX_LEN   2048
 #define LSSDP_MULTICAST_ADDR    "239.255.255.250"
 
+// SSDP Method Header
+static const char * LSSDP_MSEARCH_HEADER  = "M-SEARCH * HTTP/1.1\r\n";
+static const char * LSSDP_NOTIFY_HEADER   = "NOTIFY * HTTP/1.1\r\n";
+static const char * LSSDP_RESPONSE_HEADER = "HTTP/1.1 200 OK\r\n";
+
 static const char * LSSDP_UDA_v1_1 =
     "OPT:\"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n"  /* UDA v1.1 */
     "01-NLS:1\r\n"                                          /* same as BOOTID. UDA v1.1 */
@@ -217,12 +222,13 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
     // 2. set M-SEARCH packet
     char msearch[1024] = {};
     snprintf(msearch, sizeof(msearch),
-        "M-SEARCH * HTTP/1.1\r\n"
+        "%s"
         "HOST:%s:%d\r\n"
         "MAN:\"ssdp:discover\"\r\n"
         "ST:%s\r\n"
         "MX:1\r\n"
         "\r\n",
+        LSSDP_MSEARCH_HEADER,
         LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
         lssdp->header.st                    // ST (Search Target)
     );
@@ -282,7 +288,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         // set notify packet
         char notify[1024] = {};
         snprintf(notify, sizeof(notify),
-            "NOTIFY * HTTP/1.1\r\n"
+            "%s"
             "HOST:%s:%d\r\n"
             "CACHE-CONTROL:max-age=120\r\n"
             "ST:%s\r\n"
@@ -293,6 +299,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "%s"
             "NTS:ssdp:alive\r\n"
             "\r\n",
+            LSSDP_NOTIFY_HEADER,
             LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
             lssdp->header.st,                   // ST
             lssdp->header.usn,                  // USN
