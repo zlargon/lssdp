@@ -19,6 +19,12 @@
 #define LSSDP_MESSAGE_MAX_LEN   2048
 #define LSSDP_MULTICAST_ADDR    "239.255.255.250"
 
+static const char * LSSDP_UDA_v1_1 =
+    "OPT:\"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n"  /* UDA v1.1 */
+    "01-NLS:1\r\n"                                          /* same as BOOTID. UDA v1.1 */
+    "BOOTID.UPNP.ORG:1\r\n"                                 /* UDA v1.1 */
+    "CONFIGID.UPNP.ORG:1337\r\n";                           /* UDA v1.1 */
+
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
@@ -230,6 +236,73 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         }
 
         send_multicast_data(msearch, *interface, lssdp->port);
+    }
+    return 0;
+}
+
+// 06. lssdp_send_notify
+int lssdp_send_notify(lssdp_ctx * lssdp) {
+    // update network interface
+    lssdp_get_network_interface(lssdp);
+
+    // 1. set location suffix
+    char suffix[256] = {0};
+    const int port = lssdp->header.location.port;
+    if (0 < port && port <= 0xFFFF) {
+        sprintf(suffix, ":%d", port);
+    }
+    const char * uri = lssdp->header.location.uri;
+    if (strlen(uri) > 0) {
+        sprintf(suffix + strlen(suffix), "/%s", uri);
+    }
+
+    // 2. send NOTIFY to each interface
+    size_t i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        struct lssdp_interface * interface = &lssdp->interface[i];
+        if (strlen(interface->name) == 0) {
+            break;
+        }
+
+        // set location: Host (or interface IP) + suffix
+        char location[256] = {};
+        const char * host = lssdp->header.location.host;
+        if (strlen(host) > 0) {
+            sprintf(location, "%s%s", host, suffix);
+        } else {
+            sprintf(location, "%d.%d.%d.%d%s",
+                interface->ip[0],
+                interface->ip[1],
+                interface->ip[2],
+                interface->ip[3],
+                suffix
+            );
+        }
+
+        // set notify packet
+        char notify[1024] = {};
+        snprintf(notify, sizeof(notify),
+            "NOTIFY * HTTP/1.1\r\n"
+            "HOST:%s:%d\r\n"
+            "CACHE-CONTROL:max-age=120\r\n"
+            "ST:%s\r\n"
+            "USN:%s\r\n"
+            "LOCATION:%s\r\n"
+            "SM_ID:%s\r\n"
+            "DEV_TYPE:%s\r\n"
+            "%s"
+            "NTS:ssdp:alive\r\n"
+            "\r\n",
+            LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
+            lssdp->header.st,                   // ST
+            lssdp->header.usn,                  // USN
+            location,                           // LOCATION
+            lssdp->header.sm_id,                // SM_ID    (addtional field)
+            lssdp->header.device_type,          // DEV_TYPE (addtional field)
+            LSSDP_UDA_v1_1                      // UDA v1.1
+        );
+
+        send_multicast_data(notify, *interface, lssdp->port);
     }
     return 0;
 }

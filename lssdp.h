@@ -81,4 +81,13 @@ int lssdp_read_socket(lssdp_ctx * lssdp);
  */
 int lssdp_send_msearch(lssdp_ctx * lssdp);
 
+/*
+ * 06. lssdp_send_notify
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_send_notify(lssdp_ctx * lssdp);
+
 #endif
