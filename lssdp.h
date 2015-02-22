@@ -72,4 +72,13 @@ int lssdp_create_socket(lssdp_ctx * lssdp);
  */
 int lssdp_read_socket(lssdp_ctx * lssdp);
 
+/*
+ * 05. lssdp_send_msearch
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_send_msearch(lssdp_ctx * lssdp);
+
 #endif

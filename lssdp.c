@@ -23,6 +23,7 @@
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
+static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 
 
@@ -202,8 +203,113 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
     return 0;
 }
 
+// 05. lssdp_send_msearch
+int lssdp_send_msearch(lssdp_ctx * lssdp) {
+    // 1. update network interface
+    lssdp_get_network_interface(lssdp);
+
+    // 2. set M-SEARCH packet
+    char msearch[1024] = {};
+    snprintf(msearch, sizeof(msearch),
+        "M-SEARCH * HTTP/1.1\r\n"
+        "HOST:%s:%d\r\n"
+        "MAN:\"ssdp:discover\"\r\n"
+        "ST:%s\r\n"
+        "MX:1\r\n"
+        "\r\n",
+        LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
+        lssdp->header.st                    // ST (Search Target)
+    );
+
+    // 3. send M-SEARCH to each interface
+    size_t i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        struct lssdp_interface * interface = &lssdp->interface[i];
+        if (strlen(interface->name) == 0) {
+            break;
+        }
+
+        send_multicast_data(msearch, *interface, lssdp->port);
+    }
+    return 0;
+}
+
 
 /** Internal Function **/
+
+static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port) {
+    if (data == NULL) {
+        lssdp_error("data should not be NULL\n");
+        return -1;
+    }
+
+    size_t data_len = strlen(data);
+    if (data_len == 0) {
+        lssdp_error("data length should not be empty\n");
+        return -1;
+    }
+
+    if (strlen(interface.name) == 0) {
+        lssdp_error("interface.name should not be empty\n");
+        return -1;
+    }
+
+    if (ssdp_port < 0 || ssdp_port > 0xFFFF) {
+        lssdp_error("ssdp_port (%d) is invalid\n");
+        return -1;
+    }
+
+    int result = -1;
+
+    // 1. create UDP socket
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        lssdp_error("create socket failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // 2. get IP address
+    char ip[LSSDP_IP_LEN] = {};
+    sprintf(ip, "%d.%d.%d.%d", interface.ip[0], interface.ip[1], interface.ip[2], interface.ip[3]);
+
+    // 3. bind socket
+    struct sockaddr_in addr = {
+        .sin_family      = AF_INET,
+        .sin_addr.s_addr = inet_addr(ip)
+    };
+    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        lssdp_error("bind failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // 4. disable IP_MULTICAST_LOOP
+    char opt = 0;
+    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &opt, sizeof(opt)) < 0) {
+        lssdp_error("setsockopt IP_MULTICAST_LOOP failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // 5. set destination address
+    struct sockaddr_in dest_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(ssdp_port)
+    };
+    if (inet_aton(LSSDP_MULTICAST_ADDR, &dest_addr.sin_addr) == 0) {
+        lssdp_error("inet_aton failed, errno = %s (%d)\n", strerror(errno), errno);
+        goto end;
+    }
+
+    // 6. send data
+    if (sendto(fd, data, data_len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
+        lssdp_error("sendto %s (%s) failed, errno = %s (%d)\n", interface.name, ip, strerror(errno), errno);
+        goto end;
+    }
+
+    result = 0;
+end:
+    if (fd > 0) close(fd);
+    return result;
+}
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
     if (lssdp_log_callback == NULL) {
