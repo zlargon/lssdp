@@ -497,8 +497,33 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
     size_t value_len = j - i + 1;
 
 
-    // TODO: 4. set each field's value to packet
+    // 4. set each field's value to packet
+    if (field_len == strlen("st") && strncasecmp(field, "st", field_len) == 0) {
+        strncpy(packet->st, value, value_len);
+        return 0;
+    }
 
+    if (field_len == strlen("usn") && strncasecmp(field, "usn", field_len) == 0) {
+        strncpy(packet->usn, value, value_len);
+        return 0;
+    }
+
+    if (field_len == strlen("location") && strncasecmp(field, "location", field_len) == 0) {
+        strncpy(packet->location, value, value_len);
+        return 0;
+    }
+
+    if (field_len == strlen("sm_id") && strncasecmp(field, "sm_id", field_len) == 0) {
+        strncpy(packet->sm_id, value, value_len);
+        return 0;
+    }
+
+    if (field_len == strlen("dev_type") && strncasecmp(field, "dev_type", field_len) == 0) {
+        strncpy(packet->device_type, value, value_len);
+        return 0;
+    }
+
+    // the field is not in the struct packet
     return 0;
 }
 
