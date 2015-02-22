@@ -8,9 +8,10 @@
 /* socket_listener.c
  *
  * 1. create SSDP socket with port 1900
- * 2. select SSDP socket with timeout 1 seconds
- * 3. when select return value > 0, call function lssdp_read_socket
- * 4. data will be return in sspd_data_callback
+ * 2. select SSDP socket with timeout 5 seconds
+ *    - when select return value > 0, invoke lssdp_read_socket
+ *    - when select timeout, send M-SEARCH and NOTIFY
+ * 3. data will be return in sspd_data_callback
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -29,6 +30,13 @@ int main() {
     lssdp_ctx lssdp = {
         .sock = -1,
         .port = 1900,
+        .header = {
+            .st            = "ST_P2P",
+            .usn           = "f835dd0001",
+            .sm_id         = "700000123",
+            .device_type   = "BUZZI",
+            .location.port = 5678
+        },
         .data_callback = ssdp_data_callback
     };
 
@@ -44,7 +52,7 @@ int main() {
         FD_ZERO(&fs);
         FD_SET(lssdp.sock, &fs);
         struct timeval tv = {
-            .tv_sec = 1     // 1 seconds
+            .tv_sec = 5     // 5 seconds
         };
 
         int ret = select(lssdp.sock + 1, &fs, NULL, NULL, &tv);
@@ -55,6 +63,8 @@ int main() {
 
         if (ret == 0) {
             puts("select timeout");
+            lssdp_send_msearch(&lssdp);
+            lssdp_send_notify(&lssdp);
             continue;
         }
 
