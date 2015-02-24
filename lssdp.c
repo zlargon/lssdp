@@ -368,6 +368,11 @@ int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp) {
             prev->next = nbr->next;
         }
         free(nbr);
+
+        // invoke neighbor list changed callback
+        if (lssdp->neighbor_list_changed_callback != NULL) {
+            lssdp->neighbor_list_changed_callback(lssdp);
+        }
     }
     return 0;
 }
@@ -775,6 +780,11 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
         lssdp->neighbor_list = nbr;
     } else {
         last_nbr->next = nbr;
+    }
+
+    // invoke neighbor list changed callback
+    if (lssdp->neighbor_list_changed_callback != NULL) {
+        lssdp->neighbor_list_changed_callback(lssdp);
     }
 
     return 0;

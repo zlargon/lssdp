@@ -15,7 +15,7 @@
  * 3. per 5 seconds do:
  *    - send M-SEARCH and NOTIFY
  *    - check neighbor timeout
- *    - show neighbor list
+ * 4. when neighbor list is changed, show neighbor list
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -32,6 +32,24 @@ long get_current_time() {
     return (time.tv_sec * 1000) + (time.tv_usec / 1000);
 }
 
+int show_neighbor_list(const struct lssdp_ctx * lssdp) {
+    int i = 0;
+    lssdp_nbr * nbr;
+    puts("\nSSDP List:");
+    for (nbr = lssdp->neighbor_list; nbr != NULL; nbr = nbr->next) {
+        printf("%d. id = %-9s, ip = %-15s, name = %-12s, device_type = %-8s (%ld)\n",
+            ++i,
+            nbr->sm_id,
+            nbr->location,
+            nbr->name,
+            nbr->device_type,
+            nbr->update_time
+        );
+    }
+    printf("%s\n", i == 0 ? "Empty" : "");
+    return 0;
+}
+
 int main() {
     lssdp_set_log_callback(log_callback);
 
@@ -41,11 +59,14 @@ int main() {
         .neighbor_timeout = 15000,  // 15 seconds
         .header = {
             .st            = "ST_P2P",
-            .usn           = "f835dd0001",
+            .usn           = "f835dd000001",
             .sm_id         = "700000123",
             .device_type   = "BUZZI",
             .location.port = 5678
-        }
+        },
+
+        // callback
+        .neighbor_list_changed_callback = show_neighbor_list
     };
 
     // get network interface
@@ -95,22 +116,6 @@ int main() {
 
             // 3. check neighbor timeout
             lssdp_check_neighbor_timeout(&lssdp);
-
-            // 4. show neighbor list
-            int i = 0;
-            lssdp_nbr * nbr;
-            printf("\nSSDP List:\n");
-            for (nbr = lssdp.neighbor_list; nbr != NULL; nbr = nbr->next) {
-                printf("%d. id = %-9s, ip = %-15s, name = %-10s, device_type = %-8s (%ld)\n",
-                    ++i,
-                    nbr->sm_id,
-                    nbr->location,
-                    nbr->name,
-                    nbr->device_type,
-                    nbr->update_time
-                );
-            }
-            printf("%s\n", i == 0 ? "Empty" : "");
 
             // update last_time
             last_time = current_time;
