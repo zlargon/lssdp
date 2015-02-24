@@ -54,6 +54,7 @@ static const char * LSSDP_UDA_v1_1 =
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
 static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
+static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address);
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
 static int get_colon_index(const char * string, size_t start, size_t end);
@@ -236,7 +237,14 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
         goto end;
     }
 
-    // TODO: M-SEARCH, RESPONSE, NOTIFY
+    // M-SEARCH: send RESPONSE back
+    if (strcmp(packet.method, LSSDP_MSEARCH) == 0) {
+        lssdp_send_response(lssdp, address);
+        result = 0;
+        goto end;
+    }
+
+    // TODO: RESPONSE, NOTIFY
     if (strlen(packet.method)      > 0) printf("     method = %s\n", packet.method);
     if (strlen(packet.st)          > 0) printf("         st = %s\n", packet.st);
     if (strlen(packet.usn)         > 0) printf("        usn = %s\n", packet.usn);
@@ -411,6 +419,84 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
 end:
     if (fd > 0) close(fd);
     return result;
+}
+
+static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
+    // get M-SEARCH IP
+    char msearch_ip[LSSDP_IP_LEN] = {0};
+    if (inet_ntop(AF_INET, &address.sin_addr, msearch_ip, sizeof(msearch_ip)) == NULL) {
+        lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
+    }
+
+    /* 1. find the interface which is in LAN
+     *    e.g:
+     *         192.168.1.x -> 192.168.1.y (in LAN)
+     *         192.168.1.x -> 10.5.2.y    (not in LAN)
+     */
+    uint32_t mask = 0x00ffffff;
+    struct lssdp_interface * interface = NULL;
+    int i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        if ((lssdp->interface[i].s_addr & mask) == (address.sin_addr.s_addr & mask)) {
+            interface = &lssdp->interface[i];
+            break;
+        }
+    }
+
+    // interface is not found
+    if (interface == NULL) {
+        lssdp_error("M-SEARCH Packet IP (%s) is not exist in Local Area Network!\n", msearch_ip);
+        show_network_interface(lssdp);
+        return -1;
+    }
+
+    // 2. set location suffix
+    char suffix[256] = {0};
+    const int port = lssdp->header.location.port;
+    if (0 < port && port <= 0xFFFF) {
+        sprintf(suffix, ":%d", port);
+    }
+    const char * uri = lssdp->header.location.uri;
+    if (strlen(uri) > 0) {
+        sprintf(suffix + strlen(suffix), "/%s", uri);
+    }
+
+    // 3. set response packet
+    char response[1024] = {};
+    char * host = lssdp->header.location.host;
+    int response_len = snprintf(response, sizeof(response),
+        "%s"
+        "CACHE-CONTROL:max-age=120\r\n"
+        "DATE:\r\n"
+        "EXT:\r\n"
+        "LOCATION:%s%s\r\n"
+        "SERVER:OS/version UPnP/1.1 product/version\r\n"
+        "ST:%s\r\n"
+        "USN:%s\r\n"
+        "SM_ID:%s\r\n"
+        "DEV_TYPE:%s\r\n"
+        "%s"
+        "\r\n",
+        LSSDP_RESPONSE_HEADER,
+        strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
+        lssdp->header.st,                                   // ST
+        lssdp->header.usn,                                  // USN
+        lssdp->header.sm_id,                                // SM_ID    (addtional field)
+        lssdp->header.device_type,                          // DEV_TYPE (addtional field)
+        LSSDP_UDA_v1_1                                      // UDA v1.1
+    );
+
+    // 4. set port to address
+    address.sin_port = htons(lssdp->port);
+
+    // 5. send data
+    if (sendto(lssdp->sock, response, response_len, 0, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) == -1) {
+        lssdp_error("send RESPONSE to %s failed, errno = %s (%d)\n", msearch_ip, strerror(errno), errno);
+        return -1;
+    }
+
+    return 0;
 }
 
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet) {
