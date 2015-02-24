@@ -50,6 +50,7 @@ typedef struct lssdp_ctx {
 
     /* Callback Function */
     int (* data_callback)(const struct lssdp_ctx * lssdp, const char * data, size_t data_len);
+    int (* network_interface_changed_callback)(const struct lssdp_ctx * lssdp);
     int (* neighbor_list_changed_callback)(const struct lssdp_ctx * lssdp);
 
 } lssdp_ctx;

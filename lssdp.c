@@ -82,8 +82,14 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    const size_t SIZE_OF_INTERFACE_LIST = sizeof(struct lssdp_interface) * LSSDP_INTERFACE_LIST_SIZE;
+
+    // copy orginal interface
+    struct lssdp_interface original_interface[LSSDP_INTERFACE_LIST_SIZE] = {};
+    memcpy(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST);
+
     // reset lssdp->interface
-    memset(lssdp->interface, 0, sizeof(struct lssdp_interface) * LSSDP_INTERFACE_LIST_SIZE);
+    memset(lssdp->interface, 0, SIZE_OF_INTERFACE_LIST);
 
     int result = -1;
 
@@ -144,6 +150,15 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
     result = 0;
 end:
     if (fd > 0) close(fd);
+
+    // compare with original interface
+    if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) != 0) {
+        // invoke network interface changed callback
+        if (lssdp->network_interface_changed_callback != NULL) {
+            lssdp->network_interface_changed_callback(lssdp);
+        }
+    }
+
     return result;
 }
 

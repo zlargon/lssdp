@@ -16,6 +16,7 @@
  *    - send M-SEARCH and NOTIFY
  *    - check neighbor timeout
  * 4. when neighbor list is changed, show neighbor list
+ * 5. when network interface is changed, show interface list
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -50,6 +51,20 @@ int show_neighbor_list(const struct lssdp_ctx * lssdp) {
     return 0;
 }
 
+int show_interface_list(const struct lssdp_ctx * lssdp) {
+    puts("\nNetwork Interface List:");
+    int i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
+        printf("%d. %s : %s\n",
+            i + 1,
+            lssdp->interface[i].name,
+            lssdp->interface[i].ip
+        );
+    }
+    printf("%s\n", i == 0 ? "Empty" : "");
+    return 0;
+}
+
 int main() {
     lssdp_set_log_callback(log_callback);
 
@@ -66,7 +81,8 @@ int main() {
         },
 
         // callback
-        .neighbor_list_changed_callback = show_neighbor_list
+        .neighbor_list_changed_callback = show_neighbor_list,
+        .network_interface_changed_callback = show_interface_list
     };
 
     // get network interface
