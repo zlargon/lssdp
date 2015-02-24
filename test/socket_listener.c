@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>     // select
 #include <arpa/inet.h>  // sockaddr_in
+#include <sys/time.h>   // gettimeofday
 #include "lssdp.h"
 
 /* socket_listener.c
  *
  * 1. create SSDP socket with port 1900
- * 2. select SSDP socket with timeout 5 seconds
+ * 2. select SSDP socket with timeout 0.5 seconds
  *    - when select return value > 0, invoke lssdp_read_socket
- *    - when select timeout, send M-SEARCH and NOTIFY
- * 3. data will be return in sspd_data_callback
+ * 3. send M-SEARCH and NOTIFY per 5 seconds
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -19,9 +20,13 @@ int log_callback(const char * file, const char * tag, const char * level, int li
     return 0;
 }
 
-int ssdp_data_callback(const lssdp_ctx * lssdp, const char * data, size_t data_len) {
-    printf("%s\n", data);
-    return 0;
+long get_current_time() {
+    struct timeval time = {};
+    if (gettimeofday(&time, NULL) == -1) {
+        printf("gettimeofday failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
+    }
+    return (time.tv_sec * 1000) + (time.tv_usec / 1000);
 }
 
 int main() {
@@ -36,9 +41,11 @@ int main() {
             .sm_id         = "700000123",
             .device_type   = "BUZZI",
             .location.port = 5678
-        },
-        .data_callback = ssdp_data_callback
+        }
     };
+
+    // get network interface
+    lssdp_get_network_interface(&lssdp);
 
     if (lssdp_create_socket(&lssdp) != 0) {
         puts("SSDP create socket failed");
@@ -47,12 +54,16 @@ int main() {
 
     printf("SSDP socket = %d\n", lssdp.sock);
 
+    long last_time = get_current_time();
+    if (last_time < 0) return EXIT_SUCCESS;
+
+    // Main Loop
     for (;;) {
         fd_set fs;
         FD_ZERO(&fs);
         FD_SET(lssdp.sock, &fs);
         struct timeval tv = {
-            .tv_sec = 5     // 5 seconds
+            .tv_usec = 500 * 1000   // 500 ms
         };
 
         int ret = select(lssdp.sock + 1, &fs, NULL, NULL, &tv);
@@ -61,14 +72,26 @@ int main() {
             break;
         }
 
-        if (ret == 0) {
-            puts("select timeout");
-            lssdp_send_msearch(&lssdp);
-            lssdp_send_notify(&lssdp);
-            continue;
+        if (ret > 0) {
+            lssdp_read_socket(&lssdp);
         }
 
-        lssdp_read_socket(&lssdp);
+        // get current time
+        long current_time = get_current_time();
+        if (current_time < 0) break;
+
+        // doing task per 5 seconds
+        if (current_time - last_time >= 5000) {
+
+            // 1. send M-SEARCH
+            lssdp_send_msearch(&lssdp);
+
+            // 2. send NOTIFY
+            lssdp_send_notify(&lssdp);
+
+            // update last_time
+            last_time = current_time;
+        }
     }
 
     return EXIT_SUCCESS;
