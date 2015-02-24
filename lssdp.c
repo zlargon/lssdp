@@ -221,16 +221,36 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    // TODO: parse SSDP packet to struct
+    int result = -1;
 
-    if (lssdp->data_callback == NULL) {
-        lssdp_warn("data_callback has not been setup\n");
-        return 0;
+    // parse SSDP packet to struct
+    lssdp_packet packet = {};
+    if (lssdp_packet_parser(buffer, recv_len, &packet) != 0) {
+        goto end;
     }
 
+    // check search target
+    if (strcmp(packet.st, lssdp->header.st) != 0) {
+        // search target is not match
+        goto end;
+    }
+
+    // TODO: M-SEARCH, RESPONSE, NOTIFY
+    if (strlen(packet.method)      > 0) printf("     method = %s\n", packet.method);
+    if (strlen(packet.st)          > 0) printf("         st = %s\n", packet.st);
+    if (strlen(packet.usn)         > 0) printf("        usn = %s\n", packet.usn);
+    if (strlen(packet.location)    > 0) printf("   location = %s\n", packet.location);
+    if (strlen(packet.sm_id)       > 0) printf("      sm_id = %s\n", packet.sm_id);
+    if (strlen(packet.device_type) > 0) printf("device_type = %s\n", packet.device_type);
+    if (packet.update_time > 0)         printf("update_time = %ld\n\n", packet.update_time);
+
+end:
     // invoke data received callback
-    lssdp->data_callback(lssdp, buffer, recv_len);
-    return 0;
+    if (lssdp->data_callback != NULL) {
+        lssdp->data_callback(lssdp, buffer, recv_len);
+    }
+
+    return result;
 }
 
 // 05. lssdp_send_msearch
