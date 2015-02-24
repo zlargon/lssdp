@@ -24,13 +24,7 @@ int test_get_interface_list() {
             break;
         }
 
-        printf("%s : %d.%d.%d.%d\n",
-            lssdp.interface[i].name,
-            lssdp.interface[i].ip[0],
-            lssdp.interface[i].ip[1],
-            lssdp.interface[i].ip[2],
-            lssdp.interface[i].ip[3]
-        );
+        printf("%s : %s\n", lssdp.interface[i].name, lssdp.interface[i].ip);
     }
     puts("");
     return 0;

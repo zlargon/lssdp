@@ -1,16 +1,20 @@
 #ifndef __LSSDP_H
 #define __LSSDP_H
 
+#include <stdint.h>     // uint32_t
+
 /* struct : lssdp_ctx */
 #define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
 #define LSSDP_INTERFACE_LIST_SIZE   16
+#define LSSDP_IP_LEN                16
 #define LSSDP_HEADER_FIELD_LEN      256
 
 typedef struct lssdp_ctx {
     /* Network Interface */
     struct lssdp_interface {
-        char            name    [LSSDP_INTERFACE_NAME_LEN]; // name[16]
-        unsigned char   ip      [4];                        // ip = [ 127, 0, 0, 1 ]
+        char        name        [LSSDP_INTERFACE_NAME_LEN]; // name[16]
+        char        ip          [LSSDP_IP_LEN];             // ip[16] = "xxx.xxx.xxx.xxx"
+        uint32_t    s_addr;                                 // address in network byte order
     } interface[LSSDP_INTERFACE_LIST_SIZE];                 // interface[16]
 
     int port;

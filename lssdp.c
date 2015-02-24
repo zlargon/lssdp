@@ -17,7 +17,6 @@
 #define _SIZEOF_ADDR_IFREQ sizeof
 #endif
 
-#define LSSDP_IP_LEN            16
 #define LSSDP_MESSAGE_MAX_LEN   2048
 #define LSSDP_MULTICAST_ADDR    "239.255.255.250"
 
@@ -129,15 +128,10 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
             lssdp_warn("the number of network interface is over than max size %d\n", LSSDP_INTERFACE_LIST_SIZE);
             lssdp_debug("%2d. %s : %s\n", num, ifr->ifr_name, ip);
         } else {
-            // 1. set interface.name
-            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN - 1, "%s", ifr->ifr_name);
-
-            // 2. set interface.ip = [ xxx, xxx, xxx, xxx ]
-            char * token_ptr;
-            size_t i;
-            for (i = 0; i < 4; i++) {
-                lssdp->interface[num].ip[i] = atoi(strtok_r(i == 0 ? ip : NULL, ".", &token_ptr));
-            }
+            // set interface
+            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN - 1, "%s", ifr->ifr_name);    // name
+            snprintf(lssdp->interface[num].ip,   LSSDP_IP_LEN - 1,             "%s", ip);               // ip string
+            lssdp->interface[num].s_addr = addr_in->sin_addr.s_addr;                                    // address in network byte order
         }
 
         // increase interface number
@@ -295,43 +289,29 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             break;
         }
 
-        // set location: Host (or interface IP) + suffix
-        char location[256] = {};
-        const char * host = lssdp->header.location.host;
-        if (strlen(host) > 0) {
-            sprintf(location, "%s%s", host, suffix);
-        } else {
-            sprintf(location, "%d.%d.%d.%d%s",
-                interface->ip[0],
-                interface->ip[1],
-                interface->ip[2],
-                interface->ip[3],
-                suffix
-            );
-        }
-
         // set notify packet
         char notify[1024] = {};
+        char * host = lssdp->header.location.host;
         snprintf(notify, sizeof(notify),
             "%s"
             "HOST:%s:%d\r\n"
             "CACHE-CONTROL:max-age=120\r\n"
             "ST:%s\r\n"
             "USN:%s\r\n"
-            "LOCATION:%s\r\n"
+            "LOCATION:%s%s\r\n"
             "SM_ID:%s\r\n"
             "DEV_TYPE:%s\r\n"
             "%s"
             "NTS:ssdp:alive\r\n"
             "\r\n",
             LSSDP_NOTIFY_HEADER,
-            LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
-            lssdp->header.st,                   // ST
-            lssdp->header.usn,                  // USN
-            location,                           // LOCATION
-            lssdp->header.sm_id,                // SM_ID    (addtional field)
-            lssdp->header.device_type,          // DEV_TYPE (addtional field)
-            LSSDP_UDA_v1_1                      // UDA v1.1
+            LSSDP_MULTICAST_ADDR, lssdp->port,                  // HOST
+            lssdp->header.st,                                   // ST
+            lssdp->header.usn,                                  // USN
+            strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
+            lssdp->header.sm_id,                                // SM_ID    (addtional field)
+            lssdp->header.device_type,                          // DEV_TYPE (addtional field)
+            LSSDP_UDA_v1_1                                      // UDA v1.1
         );
 
         send_multicast_data(notify, *interface, lssdp->port);
@@ -373,28 +353,24 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
         goto end;
     }
 
-    // 2. get IP address
-    char ip[LSSDP_IP_LEN] = {};
-    sprintf(ip, "%d.%d.%d.%d", interface.ip[0], interface.ip[1], interface.ip[2], interface.ip[3]);
-
-    // 3. bind socket
+    // 2. bind socket
     struct sockaddr_in addr = {
         .sin_family      = AF_INET,
-        .sin_addr.s_addr = inet_addr(ip)
+        .sin_addr.s_addr = interface.s_addr
     };
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         lssdp_error("bind failed, errno = %s (%d)\n", strerror(errno), errno);
         goto end;
     }
 
-    // 4. disable IP_MULTICAST_LOOP
+    // 3. disable IP_MULTICAST_LOOP
     char opt = 0;
     if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &opt, sizeof(opt)) < 0) {
         lssdp_error("setsockopt IP_MULTICAST_LOOP failed, errno = %s (%d)\n", strerror(errno), errno);
         goto end;
     }
 
-    // 5. set destination address
+    // 4. set destination address
     struct sockaddr_in dest_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(ssdp_port)
@@ -404,9 +380,9 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
         goto end;
     }
 
-    // 6. send data
+    // 5. send data
     if (sendto(fd, data, data_len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
-        lssdp_error("sendto %s (%s) failed, errno = %s (%d)\n", interface.name, ip, strerror(errno), errno);
+        lssdp_error("sendto %s (%s) failed, errno = %s (%d)\n", interface.name, interface.ip, strerror(errno), errno);
         goto end;
     }
 
