@@ -22,14 +22,14 @@
 
 /* struct: lssdp_packet */
 typedef struct lssdp_packet {
-    char            method      [LSSDP_HEADER_FIELD_LEN];   // M-SEARCH, NOTIFY, RESPONSE
-    char            st          [LSSDP_HEADER_FIELD_LEN];   // Search Target
-    char            usn         [LSSDP_HEADER_FIELD_LEN];   // Unique Service Name
-    char            location    [LSSDP_HEADER_FIELD_LEN];   // Location
+    char            method      [LSSDP_FIELD_LEN];      // M-SEARCH, NOTIFY, RESPONSE
+    char            st          [LSSDP_FIELD_LEN];      // Search Target
+    char            usn         [LSSDP_FIELD_LEN];      // Unique Service Name
+    char            location    [LSSDP_FIELD_LEN];      // Location
 
     /* Additional SSDP Header Fields */
-    char            sm_id       [LSSDP_HEADER_FIELD_LEN];
-    char            device_type [LSSDP_HEADER_FIELD_LEN];
+    char            sm_id       [LSSDP_FIELD_LEN];
+    char            device_type [LSSDP_FIELD_LEN];
     unsigned long   update_time;
 } lssdp_packet;
 

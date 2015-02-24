@@ -3,13 +3,26 @@
 
 #include <stdint.h>     // uint32_t
 
+/* struct : lssdp_nbr */
+#define LSSDP_FIELD_LEN     256
+typedef struct lssdp_nbr {
+    char            name        [LSSDP_FIELD_LEN];          // Device Name (or MAC)
+    char            sm_id       [LSSDP_FIELD_LEN];
+    char            device_type [LSSDP_FIELD_LEN];
+    char            location    [LSSDP_FIELD_LEN];          // URL or IP(:Port)
+    unsigned long   update_time;
+    struct lssdp_nbr * next;
+} lssdp_nbr;
+
 /* struct : lssdp_ctx */
 #define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
 #define LSSDP_INTERFACE_LIST_SIZE   16
 #define LSSDP_IP_LEN                16
-#define LSSDP_HEADER_FIELD_LEN      256
-
 typedef struct lssdp_ctx {
+    int             sock;                                   // SSDP socket
+    int             port;                                   // SSDP port
+    lssdp_nbr *     neighbor_list;                          // SSDP neighbor list
+
     /* Network Interface */
     struct lssdp_interface {
         char        name        [LSSDP_INTERFACE_NAME_LEN]; // name[16]
@@ -17,26 +30,24 @@ typedef struct lssdp_ctx {
         uint32_t    s_addr;                                 // address in network byte order
     } interface[LSSDP_INTERFACE_LIST_SIZE];                 // interface[16]
 
-    int port;
-    int sock;
-
     /* SSDP Header Fields */
     struct {
-        char        st          [LSSDP_HEADER_FIELD_LEN];   // Search Target
-        char        usn         [LSSDP_HEADER_FIELD_LEN];   // Unique Service Name
+        char        st          [LSSDP_FIELD_LEN];          // Search Target
+        char        usn         [LSSDP_FIELD_LEN];          // Unique Service Name
 
         // Location = host + [:port] + [/uri]
         struct {
-            char    host        [LSSDP_HEADER_FIELD_LEN];   // optional, if host is empty, using each interface IP as default
+            char    host        [LSSDP_FIELD_LEN];          // optional, if host is empty, using each interface IP as default
             int     port;                                   // optional
-            char    uri         [LSSDP_HEADER_FIELD_LEN];   // optional
+            char    uri         [LSSDP_FIELD_LEN];          // optional
         } location;
 
         /* Additional SSDP Header Fields */
-        char        sm_id       [LSSDP_HEADER_FIELD_LEN];
-        char        device_type [LSSDP_HEADER_FIELD_LEN];
+        char        sm_id       [LSSDP_FIELD_LEN];
+        char        device_type [LSSDP_FIELD_LEN];
     } header;
 
+    /* Callback Function */
     int (* data_callback)(const struct lssdp_ctx * lssdp, const char * data, size_t data_len);
 
 } lssdp_ctx;
