@@ -14,6 +14,7 @@
  *    - when select return value > 0, invoke lssdp_read_socket
  * 3. per 5 seconds do:
  *    - send M-SEARCH and NOTIFY
+ *    - check neighbor timeout
  *    - show neighbor list
  */
 
@@ -37,6 +38,7 @@ int main() {
     lssdp_ctx lssdp = {
         .sock = -1,
         .port = 1900,
+        .neighbor_timeout = 15000,  // 15 seconds
         .header = {
             .st            = "ST_P2P",
             .usn           = "f835dd0001",
@@ -91,7 +93,10 @@ int main() {
             // 2. send NOTIFY
             lssdp_send_notify(&lssdp);
 
-            // 3. show neighbor list
+            // 3. check neighbor timeout
+            lssdp_check_neighbor_timeout(&lssdp);
+
+            // 4. show neighbor list
             int i = 0;
             lssdp_nbr * nbr;
             printf("\nSSDP List:\n");

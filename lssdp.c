@@ -343,6 +343,35 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
     return 0;
 }
 
+// 07. lssdp_check_neighbor_timeout
+int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp) {
+    long current_time = get_current_time();
+    if (current_time < 0) {
+        return -1;
+    }
+
+    lssdp_nbr * prev = NULL;
+    lssdp_nbr * nbr;
+    for (nbr = lssdp->neighbor_list; nbr != NULL; nbr = nbr->next) {
+        long pass_time = current_time - nbr->update_time;
+        if (pass_time < lssdp->neighbor_timeout) {
+            prev = nbr;
+            continue;
+        }
+
+        lssdp_warn("remove timeout SSDP neighbor: %s (%s) (%ldms)\n", nbr->sm_id, nbr->location, pass_time);
+
+        if (prev == NULL) {
+            // it's first neighbor in list
+            lssdp->neighbor_list = nbr->next;
+        } else {
+            prev->next = nbr->next;
+        }
+        free(nbr);
+    }
+    return 0;
+}
+
 
 /** Internal Function **/
 

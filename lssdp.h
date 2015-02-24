@@ -22,6 +22,7 @@ typedef struct lssdp_ctx {
     int             sock;                                   // SSDP socket
     int             port;                                   // SSDP port
     lssdp_nbr *     neighbor_list;                          // SSDP neighbor list
+    long            neighbor_timeout;                       // milliseconds
 
     /* Network Interface */
     struct lssdp_interface {
@@ -104,5 +105,14 @@ int lssdp_send_msearch(lssdp_ctx * lssdp);
  *         < 0      failed
  */
 int lssdp_send_notify(lssdp_ctx * lssdp);
+
+/*
+ * 07. lssdp_check_neighbor_timeout
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp);
 
 #endif
