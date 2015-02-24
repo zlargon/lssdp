@@ -62,6 +62,7 @@ static int trim_spaces(const char * string, size_t * start, size_t * end);
 static long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 static int show_network_interface(lssdp_ctx * lssdp);
+static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 
 
 /** Global Variable **/
@@ -244,14 +245,8 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
         goto end;
     }
 
-    // TODO: RESPONSE, NOTIFY
-    if (strlen(packet.method)      > 0) printf("     method = %s\n", packet.method);
-    if (strlen(packet.st)          > 0) printf("         st = %s\n", packet.st);
-    if (strlen(packet.usn)         > 0) printf("        usn = %s\n", packet.usn);
-    if (strlen(packet.location)    > 0) printf("   location = %s\n", packet.location);
-    if (strlen(packet.sm_id)       > 0) printf("      sm_id = %s\n", packet.sm_id);
-    if (strlen(packet.device_type) > 0) printf("device_type = %s\n", packet.device_type);
-    if (packet.update_time > 0)         printf("update_time = %ld\n\n", packet.update_time);
+    // RESPONSE, NOTIFY: add to neighbor_list
+    neighbor_list_add(lssdp, packet);
 
 end:
     // invoke data received callback
@@ -685,5 +680,73 @@ static int show_network_interface(lssdp_ctx * lssdp) {
     }
     if (i == 0) lssdp_debug("Empty!\n");
     lssdp_debug("-------------------------\n");
+    return 0;
+}
+
+static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
+    lssdp_nbr * last_nbr = lssdp->neighbor_list;
+
+    lssdp_nbr * nbr;
+    for (nbr = lssdp->neighbor_list; nbr != NULL; last_nbr = nbr, nbr = nbr->next) {
+        if (strcmp(nbr->location, packet.location) != 0) {
+            // location is not match
+            continue;
+        }
+
+        /* location is not found in SSDP list: update neighbor */
+
+        // name
+        if (strcmp(nbr->name, packet.usn) != 0) {
+            lssdp_warn("neighbor name was changed. %s -> %s\n", nbr->name, packet.usn);
+            memset(nbr->name, 0, LSSDP_FIELD_LEN);
+            strcpy(nbr->name, packet.usn);
+        }
+
+        // sm_id
+        if (strcmp(nbr->sm_id, packet.sm_id) != 0) {
+            lssdp_warn("neighbor sm_id was changed. %s -> %s\n", nbr->sm_id, packet.sm_id);
+            memset(nbr->sm_id, 0, LSSDP_FIELD_LEN);
+            strcpy(nbr->sm_id, packet.sm_id);
+        }
+
+        // device type
+        if (strcmp(nbr->device_type, packet.device_type) != 0) {
+            lssdp_warn("neighbor device_type was changed. %s -> %s\n", nbr->device_type, packet.device_type);
+            memset(nbr->device_type, 0, LSSDP_FIELD_LEN);
+            strcpy(nbr->device_type, packet.device_type);
+        }
+
+        // update_time
+        nbr->update_time = packet.update_time;
+        return 0;
+    }
+
+
+    /* location is not found in SSDP list: add to list */
+
+    // 1. memory allocate lssdp_nbr
+    nbr = (lssdp_nbr *) malloc(sizeof(lssdp_nbr));
+    if (nbr == NULL) {
+        lssdp_error("malloc failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
+    }
+    memset(nbr, 0, sizeof(lssdp_nbr));
+
+    // 2. setup neighbor
+    strcpy(nbr->name,        packet.usn);
+    strcpy(nbr->sm_id,       packet.sm_id);
+    strcpy(nbr->device_type, packet.device_type);
+    strcpy(nbr->location,    packet.location);
+    nbr->update_time = packet.update_time;
+    nbr->next = NULL;
+
+    // 3. add neighbor to the end of list
+    if (last_nbr == NULL) {
+        // it's the first neighbor
+        lssdp->neighbor_list = nbr;
+    } else {
+        last_nbr->next = nbr;
+    }
+
     return 0;
 }

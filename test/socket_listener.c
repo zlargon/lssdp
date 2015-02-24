@@ -12,7 +12,9 @@
  * 1. create SSDP socket with port 1900
  * 2. select SSDP socket with timeout 0.5 seconds
  *    - when select return value > 0, invoke lssdp_read_socket
- * 3. send M-SEARCH and NOTIFY per 5 seconds
+ * 3. per 5 seconds do:
+ *    - send M-SEARCH and NOTIFY
+ *    - show neighbor list
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -88,6 +90,22 @@ int main() {
 
             // 2. send NOTIFY
             lssdp_send_notify(&lssdp);
+
+            // 3. show neighbor list
+            int i = 0;
+            lssdp_nbr * nbr;
+            printf("\nSSDP List:\n");
+            for (nbr = lssdp.neighbor_list; nbr != NULL; nbr = nbr->next) {
+                printf("%d. id = %-9s, ip = %-15s, name = %-10s, device_type = %-8s (%ld)\n",
+                    ++i,
+                    nbr->sm_id,
+                    nbr->location,
+                    nbr->name,
+                    nbr->device_type,
+                    nbr->update_time
+                );
+            }
+            printf("%s\n", i == 0 ? "Empty" : "");
 
             // update last_time
             last_time = current_time;
