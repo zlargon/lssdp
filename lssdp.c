@@ -18,7 +18,9 @@
 #endif
 
 #define LSSDP_MESSAGE_MAX_LEN   2048
+#define LSSDP_LOCAL_HOST_ADDR   "127.0.0.1"
 #define LSSDP_MULTICAST_ADDR    "239.255.255.250"
+
 
 /* struct: lssdp_packet */
 typedef struct lssdp_packet {
@@ -308,6 +310,11 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
             break;
         }
 
+        // avoid sending multicast to local host
+        if (interface->s_addr == inet_addr(LSSDP_LOCAL_HOST_ADDR)) {
+            continue;
+        }
+
         send_multicast_data(msearch, *interface, lssdp->port);
     }
     return 0;
@@ -335,6 +342,11 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         struct lssdp_interface * interface = &lssdp->interface[i];
         if (strlen(interface->name) == 0) {
             break;
+        }
+
+        // avoid sending multicast to local host
+        if (interface->s_addr == inet_addr(LSSDP_LOCAL_HOST_ADDR)) {
+            continue;
         }
 
         // set notify packet
