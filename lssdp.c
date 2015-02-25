@@ -140,9 +140,9 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
             lssdp_debug("%2d. %s : %s\n", num, ifr->ifr_name, ip);
         } else {
             // set interface
-            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN - 1, "%s", ifr->ifr_name);    // name
-            snprintf(lssdp->interface[num].ip,   LSSDP_IP_LEN - 1,             "%s", ip);               // ip string
-            lssdp->interface[num].s_addr = addr_in->sin_addr.s_addr;                                    // address in network byte order
+            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifr->ifr_name); // name
+            snprintf(lssdp->interface[num].ip,   LSSDP_IP_LEN,             "%s", ip);            // ip string
+            lssdp->interface[num].s_addr = addr_in->sin_addr.s_addr;                             // address in network byte order
         }
 
         // increase interface number
@@ -660,27 +660,27 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
 
     // 4. set each field's value to packet
     if (field_len == strlen("st") && strncasecmp(field, "st", field_len) == 0) {
-        strncpy(packet->st, value, value_len);
+        memcpy(packet->st, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
 
     if (field_len == strlen("usn") && strncasecmp(field, "usn", field_len) == 0) {
-        strncpy(packet->usn, value, value_len);
+        memcpy(packet->usn, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
 
     if (field_len == strlen("location") && strncasecmp(field, "location", field_len) == 0) {
-        strncpy(packet->location, value, value_len);
+        memcpy(packet->location, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
 
     if (field_len == strlen("sm_id") && strncasecmp(field, "sm_id", field_len) == 0) {
-        strncpy(packet->sm_id, value, value_len);
+        memcpy(packet->sm_id, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
 
     if (field_len == strlen("dev_type") && strncasecmp(field, "dev_type", field_len) == 0) {
-        strncpy(packet->device_type, value, value_len);
+        memcpy(packet->device_type, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
 
@@ -773,22 +773,19 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
         // name
         if (strcmp(nbr->name, packet.usn) != 0) {
             lssdp_warn("neighbor name was changed. %s -> %s\n", nbr->name, packet.usn);
-            memset(nbr->name, 0, LSSDP_FIELD_LEN);
-            strcpy(nbr->name, packet.usn);
+            memcpy(nbr->name, packet.usn, LSSDP_FIELD_LEN);
         }
 
         // sm_id
         if (strcmp(nbr->sm_id, packet.sm_id) != 0) {
             lssdp_warn("neighbor sm_id was changed. %s -> %s\n", nbr->sm_id, packet.sm_id);
-            memset(nbr->sm_id, 0, LSSDP_FIELD_LEN);
-            strcpy(nbr->sm_id, packet.sm_id);
+            memcpy(nbr->sm_id, packet.sm_id, LSSDP_FIELD_LEN);
         }
 
         // device type
         if (strcmp(nbr->device_type, packet.device_type) != 0) {
             lssdp_warn("neighbor device_type was changed. %s -> %s\n", nbr->device_type, packet.device_type);
-            memset(nbr->device_type, 0, LSSDP_FIELD_LEN);
-            strcpy(nbr->device_type, packet.device_type);
+            memcpy(nbr->device_type, packet.device_type, LSSDP_FIELD_LEN);
         }
 
         // update_time
@@ -805,13 +802,12 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
         lssdp_error("malloc failed, errno = %s (%d)\n", strerror(errno), errno);
         return -1;
     }
-    memset(nbr, 0, sizeof(lssdp_nbr));
 
     // 2. setup neighbor
-    strcpy(nbr->name,        packet.usn);
-    strcpy(nbr->sm_id,       packet.sm_id);
-    strcpy(nbr->device_type, packet.device_type);
-    strcpy(nbr->location,    packet.location);
+    memcpy(nbr->name,        packet.usn,         LSSDP_FIELD_LEN);
+    memcpy(nbr->sm_id,       packet.sm_id,       LSSDP_FIELD_LEN);
+    memcpy(nbr->device_type, packet.device_type, LSSDP_FIELD_LEN);
+    memcpy(nbr->location,    packet.location,    LSSDP_FIELD_LEN);
     nbr->update_time = packet.update_time;
     nbr->next = NULL;
 
