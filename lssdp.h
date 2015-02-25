@@ -6,16 +6,18 @@
 /* struct : lssdp_nbr */
 #define LSSDP_FIELD_LEN     256
 typedef struct lssdp_nbr {
-    char            name        [LSSDP_FIELD_LEN];          // Device Name (or MAC)
+    char            usn         [LSSDP_FIELD_LEN];          // Unique Service Name (Device Name or MAC)
+    char            location    [LSSDP_FIELD_LEN];          // URL or IP(:Port)
+
+    /* Additional SSDP Header Fields */
     char            sm_id       [LSSDP_FIELD_LEN];
     char            device_type [LSSDP_FIELD_LEN];
-    char            location    [LSSDP_FIELD_LEN];          // URL or IP(:Port)
     unsigned long   update_time;
     struct lssdp_nbr * next;
 } lssdp_nbr;
 
 /* struct : lssdp_ctx */
-#define LSSDP_INTERFACE_NAME_LEN    16  // IFNAMSIZ
+#define LSSDP_INTERFACE_NAME_LEN    16                      // IFNAMSIZ
 #define LSSDP_INTERFACE_LIST_SIZE   16
 #define LSSDP_IP_LEN                16
 typedef struct lssdp_ctx {

@@ -46,7 +46,7 @@ int show_neighbor_list(lssdp_ctx * lssdp) {
             ++i,
             nbr->sm_id,
             nbr->location,
-            nbr->name,
+            nbr->usn,
             nbr->device_type,
             nbr->update_time
         );

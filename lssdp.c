@@ -777,10 +777,10 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
 
         /* location is not found in SSDP list: update neighbor */
 
-        // name
-        if (strcmp(nbr->name, packet.usn) != 0) {
-            lssdp_warn("neighbor name was changed. %s -> %s\n", nbr->name, packet.usn);
-            memcpy(nbr->name, packet.usn, LSSDP_FIELD_LEN);
+        // usn
+        if (strcmp(nbr->usn, packet.usn) != 0) {
+            lssdp_warn("neighbor usn was changed. %s -> %s\n", nbr->usn, packet.usn);
+            memcpy(nbr->usn, packet.usn, LSSDP_FIELD_LEN);
         }
 
         // sm_id
@@ -811,7 +811,7 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
     }
 
     // 2. setup neighbor
-    memcpy(nbr->name,        packet.usn,         LSSDP_FIELD_LEN);
+    memcpy(nbr->usn,         packet.usn,         LSSDP_FIELD_LEN);
     memcpy(nbr->sm_id,       packet.sm_id,       LSSDP_FIELD_LEN);
     memcpy(nbr->device_type, packet.device_type, LSSDP_FIELD_LEN);
     memcpy(nbr->location,    packet.location,    LSSDP_FIELD_LEN);
