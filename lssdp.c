@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>      // isprint, isspace
@@ -387,29 +388,35 @@ int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    bool is_changed = false;
     lssdp_nbr * prev = NULL;
-    lssdp_nbr * nbr;
-    for (nbr = lssdp->neighbor_list; nbr != NULL; nbr = nbr->next) {
+    lssdp_nbr * nbr  = lssdp->neighbor_list;
+    while (nbr != NULL) {
         long pass_time = current_time - nbr->update_time;
         if (pass_time < lssdp->neighbor_timeout) {
             prev = nbr;
+            nbr  = nbr->next;
             continue;
         }
 
+        is_changed = true;
         lssdp_warn("remove timeout SSDP neighbor: %s (%s) (%ldms)\n", nbr->sm_id, nbr->location, pass_time);
 
         if (prev == NULL) {
             // it's first neighbor in list
             lssdp->neighbor_list = nbr->next;
+            free(nbr);
+            nbr = lssdp->neighbor_list;
         } else {
             prev->next = nbr->next;
+            free(nbr);
+            nbr = prev->next;
         }
-        free(nbr);
+    }
 
-        // invoke neighbor list changed callback
-        if (lssdp->neighbor_list_changed_callback != NULL) {
-            lssdp->neighbor_list_changed_callback(lssdp);
-        }
+    // invoke neighbor list changed callback
+    if (is_changed == true && lssdp->neighbor_list_changed_callback != NULL) {
+        lssdp->neighbor_list_changed_callback(lssdp);
     }
     return 0;
 }
