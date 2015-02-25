@@ -252,6 +252,15 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
 
     int result = -1;
 
+    // ignore the SSDP packet received from self
+    size_t i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        if (lssdp->interface[i].s_addr == address.sin_addr.s_addr) {
+            result = 0;
+            goto end;
+        }
+    }
+
     // parse SSDP packet to struct
     lssdp_packet packet = {};
     if (lssdp_packet_parser(buffer, recv_len, &packet) != 0) {
