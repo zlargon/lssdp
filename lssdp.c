@@ -149,7 +149,9 @@ int lssdp_get_network_interface(lssdp_ctx * lssdp) {
 
     result = 0;
 end:
-    if (fd > 0) close(fd);
+    if (fd >= 0 && close(fd) != 0) {
+        lssdp_error("close fd %d failed, errno = %s (%d)\n", strerror(errno), errno);
+    }
 
     // compare with original interface
     if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) != 0) {
@@ -170,8 +172,11 @@ int lssdp_create_socket(lssdp_ctx * lssdp) {
     }
 
     if (lssdp->sock >= 0) {
-        lssdp_debug("close socket %d\n", lssdp->sock);
-        close(lssdp->sock);
+        if (close(lssdp->sock) != 0) {
+            lssdp_error("close socket %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
+            return -1;
+        };
+        lssdp_debug("close SSDP socket %d\n", lssdp->sock);
         lssdp->sock = -1;
     }
 
@@ -218,10 +223,14 @@ int lssdp_create_socket(lssdp_ctx * lssdp) {
         goto end;
     }
 
+    lssdp_debug("create SSDP socket %d\n", lssdp->sock);
     result = 0;
 end:
     if (result == -1) {
-        close(lssdp->sock);
+        if (close(lssdp->sock) != 0) {
+            lssdp_error("close socket %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
+            return -1;
+        };
         lssdp->sock = -1;
     }
     return result;
@@ -461,7 +470,9 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
 
     result = 0;
 end:
-    if (fd > 0) close(fd);
+    if (fd >= 0 && close(fd) != 0) {
+        lssdp_error("close fd %d failed, errno = %s (%d)\n", strerror(errno), errno);
+    }
     return result;
 }
 
