@@ -24,7 +24,7 @@
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
-    printf("[%s][%s] %s: %s", level, tag, func, message);
+    printf("[%-5s][%s] %s", level, tag, message);
     return 0;
 }
 
@@ -87,6 +87,7 @@ int main() {
     lssdp_set_log_callback(log_callback);
 
     lssdp_ctx lssdp = {
+        // .debug = true,           // debug
         .sock = -1,
         .port = 1900,
         .neighbor_timeout = 15000,  // 15 seconds

@@ -1,6 +1,7 @@
 #ifndef __LSSDP_H
 #define __LSSDP_H
 
+#include <stdbool.h>
 #include <stdint.h>     // uint32_t
 
 /* Struct : lssdp_nbr */
@@ -27,6 +28,7 @@ typedef struct lssdp_ctx {
     int             port;                                   // SSDP port
     lssdp_nbr *     neighbor_list;                          // SSDP neighbor list
     long            neighbor_timeout;                       // milliseconds
+    bool            debug;                                  // show debug log
 
     /* Network Interface */
     struct lssdp_interface {

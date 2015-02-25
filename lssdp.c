@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>      // isprint, isspace
@@ -22,6 +21,7 @@
 
 #define LSSDP_MESSAGE_MAX_LEN 2048
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
+#define lssdp_info(fmt, agrs...)  lssdp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
@@ -288,7 +288,11 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
             continue;
         }
 
-        send_multicast_data(msearch, *interface, lssdp->port);
+        // send M-SEARCH
+        int ret = send_multicast_data(msearch, *interface, lssdp->port);
+        if (ret == 0 && lssdp->debug) {
+            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.MSEARCH, interface->ip);
+        }
     }
     return 0;
 }
@@ -332,7 +336,11 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             lssdp->header.device_type                   // DEV_TYPE (addtional field)
         );
 
-        send_multicast_data(notify, *interface, lssdp->port);
+        // send NOTIFY
+        int ret = send_multicast_data(notify, *interface, lssdp->port);
+        if (ret == 0 && lssdp->debug) {
+            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.NOTIFY, interface->ip);
+        }
     }
     return 0;
 }
@@ -369,6 +377,9 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
     // check search target
     if (strcmp(packet.st, lssdp->header.st) != 0) {
         // search target is not match
+        if (lssdp->debug) {
+            lssdp_info("RECV <- %-8s   not match with %-14s %s\n", packet.method, lssdp->header.st, packet.location);
+        }
         goto end;
     }
 
@@ -381,6 +392,10 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
 
     // RESPONSE, NOTIFY: add to neighbor_list
     neighbor_list_add(lssdp, packet);
+
+    if (lssdp->debug) {
+        lssdp_info("RECV <- %-8s   %-28s  %s\n", packet.method, packet.location, packet.sm_id);
+    }
 
 end:
     // invoke packet received callback
@@ -537,7 +552,9 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
 
     // interface is not found
     if (interface == NULL) {
-        lssdp_error("M-SEARCH Packet IP (%s) is not exist in Local Area Network!\n", msearch_ip);
+        if (lssdp->debug) {
+            lssdp_info("RECV <- %-8s   Interface is not found        %s\n", Global.MSEARCH, msearch_ip);
+        }
         return -1;
     }
 
@@ -569,10 +586,18 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     // 3. set port to address
     address.sin_port = htons(lssdp->port);
 
+    if (lssdp->debug) {
+        lssdp_info("RECV <- %-8s   %s <- %s\n", Global.MSEARCH, interface->ip, msearch_ip);
+    }
+
     // 4. send data
     if (sendto(lssdp->sock, response, response_len, 0, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) == -1) {
         lssdp_error("send RESPONSE to %s failed, errno = %s (%d)\n", msearch_ip, strerror(errno), errno);
         return -1;
+    }
+
+    if (lssdp->debug) {
+        lssdp_info("SEND => %-8s   %s => %s\n", Global.RESPONSE, interface->ip, msearch_ip);
     }
 
     return 0;
