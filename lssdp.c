@@ -51,6 +51,7 @@ static long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 static int show_network_interface(lssdp_ctx * lssdp);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
+static void * neighbor_list_free(lssdp_nbr * list);
 
 
 /** Global Variable **/
@@ -168,7 +169,17 @@ end:
 
     // compare with original interface
     if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) != 0) {
-        // invoke network interface changed callback
+        // 1. force clean up neighbor_list
+        if (lssdp->neighbor_list != NULL) {
+            lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
+
+            // invoke neighbor list changed callback
+            if (lssdp->neighbor_list_changed_callback != NULL) {
+                lssdp->neighbor_list_changed_callback(lssdp);
+            }
+        }
+
+        // 2. invoke network interface changed callback
         if (lssdp->network_interface_changed_callback != NULL) {
             lssdp->network_interface_changed_callback(lssdp);
         }
@@ -825,4 +836,12 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
     }
 
     return 0;
+}
+
+static void * neighbor_list_free(lssdp_nbr * list) {
+    if (list != NULL) {
+        neighbor_list_free(list->next);
+        free(list);
+    }
+    return NULL;
 }
