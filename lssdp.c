@@ -45,12 +45,6 @@ static const char * LSSDP_MSEARCH_HEADER  = "M-SEARCH * HTTP/1.1\r\n";
 static const char * LSSDP_NOTIFY_HEADER   = "NOTIFY * HTTP/1.1\r\n";
 static const char * LSSDP_RESPONSE_HEADER = "HTTP/1.1 200 OK\r\n";
 
-static const char * LSSDP_UDA_v1_1 =
-    "OPT:\"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n"  /* UDA v1.1 */
-    "01-NLS:1\r\n"                                          /* same as BOOTID. UDA v1.1 */
-    "BOOTID.UPNP.ORG:1\r\n"                                 /* UDA v1.1 */
-    "CONFIGID.UPNP.ORG:1337\r\n";                           /* UDA v1.1 */
-
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
@@ -364,7 +358,6 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "LOCATION:%s%s\r\n"
             "SM_ID:%s\r\n"
             "DEV_TYPE:%s\r\n"
-            "%s"
             "NTS:ssdp:alive\r\n"
             "\r\n",
             LSSDP_NOTIFY_HEADER,
@@ -373,8 +366,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             lssdp->header.usn,                                  // USN
             strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
             lssdp->header.sm_id,                                // SM_ID    (addtional field)
-            lssdp->header.device_type,                          // DEV_TYPE (addtional field)
-            LSSDP_UDA_v1_1                                      // UDA v1.1
+            lssdp->header.device_type                           // DEV_TYPE (addtional field)
         );
 
         send_multicast_data(notify, *interface, lssdp->port);
@@ -546,15 +538,13 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         "USN:%s\r\n"
         "SM_ID:%s\r\n"
         "DEV_TYPE:%s\r\n"
-        "%s"
         "\r\n",
         LSSDP_RESPONSE_HEADER,
         strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
         lssdp->header.st,                                   // ST
         lssdp->header.usn,                                  // USN
         lssdp->header.sm_id,                                // SM_ID    (addtional field)
-        lssdp->header.device_type,                          // DEV_TYPE (addtional field)
-        LSSDP_UDA_v1_1                                      // UDA v1.1
+        lssdp->header.device_type                           // DEV_TYPE (addtional field)
     );
 
     // 4. set port to address
