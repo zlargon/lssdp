@@ -91,11 +91,11 @@ int main() {
         .port = 1900,
         .neighbor_timeout = 15000,  // 15 seconds
         .header = {
-            .st            = "ST_P2P",
-            .usn           = "f835dd000001",
-            .sm_id         = "700000123",
-            .device_type   = "BUZZI",
-            .location.port = 5678
+            .st              = "ST_P2P",
+            .usn             = "f835dd000001",
+            .sm_id           = "700000123",
+            .device_type     = "BUZZI",
+            .location.suffix = ":5678"
         },
 
         // callback

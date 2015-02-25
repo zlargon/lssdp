@@ -38,11 +38,11 @@ typedef struct lssdp_ctx {
         char        st          [LSSDP_FIELD_LEN];          // Search Target
         char        usn         [LSSDP_FIELD_LEN];          // Unique Service Name
 
-        // Location = host + [:port] + [/uri]
+        // Location (optional)
         struct {
-            char    host        [LSSDP_FIELD_LEN];          // optional, if host is empty, using each interface IP as default
-            int     port;                                   // optional
-            char    uri         [LSSDP_FIELD_LEN];          // optional
+            char    prefix      [LSSDP_FIELD_LEN];          // Protocal: "https://" or "http://"
+            char    domain      [LSSDP_FIELD_LEN];          // if domain is empty, using Interface IP as default
+            char    suffix      [LSSDP_FIELD_LEN];          // URI or Port: "/index.html" or ":80"
         } location;
 
         /* Additional SSDP Header Fields */

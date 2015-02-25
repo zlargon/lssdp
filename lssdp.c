@@ -327,7 +327,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
             break;
         }
 
-        // avoid sending multicast to local host
+        // avoid sending multicast to localhost
         if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
@@ -339,18 +339,6 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
 
 // 06. lssdp_send_notify
 int lssdp_send_notify(lssdp_ctx * lssdp) {
-    // 1. set location suffix
-    char suffix[256] = {0};
-    const int port = lssdp->header.location.port;
-    if (0 < port && port <= 0xFFFF) {
-        sprintf(suffix, ":%d", port);
-    }
-    const char * uri = lssdp->header.location.uri;
-    if (strlen(uri) > 0) {
-        sprintf(suffix + strlen(suffix), "/%s", uri);
-    }
-
-    // 2. send NOTIFY to each interface
     size_t i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
@@ -358,32 +346,34 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             break;
         }
 
-        // avoid sending multicast to local host
+        // avoid sending multicast to localhost
         if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
 
         // set notify packet
         char notify[1024] = {};
-        char * host = lssdp->header.location.host;
+        char * domain = lssdp->header.location.domain;
         snprintf(notify, sizeof(notify),
             "%s"
             "HOST:%s:%d\r\n"
             "CACHE-CONTROL:max-age=120\r\n"
             "ST:%s\r\n"
             "USN:%s\r\n"
-            "LOCATION:%s%s\r\n"
+            "LOCATION:%s%s%s\r\n"
             "SM_ID:%s\r\n"
             "DEV_TYPE:%s\r\n"
             "NTS:ssdp:alive\r\n"
             "\r\n",
             Global.HEADER_NOTIFY,
-            Global.ADDR_MULTICAST, lssdp->port,              // HOST
-            lssdp->header.st,                                // ST
-            lssdp->header.usn,                               // USN
-            strlen(host) > 0 ? host : interface->ip, suffix, // LOCATION
-            lssdp->header.sm_id,                             // SM_ID    (addtional field)
-            lssdp->header.device_type                        // DEV_TYPE (addtional field)
+            Global.ADDR_MULTICAST, lssdp->port,         // HOST
+            lssdp->header.st,                           // ST
+            lssdp->header.usn,                          // USN
+            lssdp->header.location.prefix,              // LOCATION
+            strlen(domain) > 0 ? domain : interface->ip,
+            lssdp->header.location.suffix,
+            lssdp->header.sm_id,                        // SM_ID    (addtional field)
+            lssdp->header.device_type                   // DEV_TYPE (addtional field)
         );
 
         send_multicast_data(notify, *interface, lssdp->port);
@@ -530,26 +520,15 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         return -1;
     }
 
-    // 2. set location suffix
-    char suffix[256] = {0};
-    const int port = lssdp->header.location.port;
-    if (0 < port && port <= 0xFFFF) {
-        sprintf(suffix, ":%d", port);
-    }
-    const char * uri = lssdp->header.location.uri;
-    if (strlen(uri) > 0) {
-        sprintf(suffix + strlen(suffix), "/%s", uri);
-    }
-
-    // 3. set response packet
+    // 2. set response packet
     char response[1024] = {};
-    char * host = lssdp->header.location.host;
+    char * domain = lssdp->header.location.domain;
     int response_len = snprintf(response, sizeof(response),
         "%s"
         "CACHE-CONTROL:max-age=120\r\n"
         "DATE:\r\n"
         "EXT:\r\n"
-        "LOCATION:%s%s\r\n"
+        "LOCATION:%s%s%s\r\n"
         "SERVER:OS/version UPnP/1.1 product/version\r\n"
         "ST:%s\r\n"
         "USN:%s\r\n"
@@ -557,17 +536,19 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         "DEV_TYPE:%s\r\n"
         "\r\n",
         Global.HEADER_RESPONSE,
-        strlen(host) > 0 ? host : interface->ip, suffix, // LOCATION
-        lssdp->header.st,                                // ST
-        lssdp->header.usn,                               // USN
-        lssdp->header.sm_id,                             // SM_ID    (addtional field)
-        lssdp->header.device_type                        // DEV_TYPE (addtional field)
+        lssdp->header.location.prefix,              // LOCATION
+        strlen(domain) > 0 ? domain : interface->ip,
+        lssdp->header.location.suffix,
+        lssdp->header.st,                           // ST
+        lssdp->header.usn,                          // USN
+        lssdp->header.sm_id,                        // SM_ID    (addtional field)
+        lssdp->header.device_type                   // DEV_TYPE (addtional field)
     );
 
-    // 4. set port to address
+    // 3. set port to address
     address.sin_port = htons(lssdp->port);
 
-    // 5. send data
+    // 4. send data
     if (sendto(lssdp->sock, response, response_len, 0, (struct sockaddr *)&address, sizeof(struct sockaddr_in)) == -1) {
         lssdp_error("send RESPONSE to %s failed, errno = %s (%d)\n", msearch_ip, strerror(errno), errno);
         return -1;
