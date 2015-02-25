@@ -63,25 +63,34 @@ typedef struct lssdp_ctx {
 
 
 /*
- * 01. lssdp_get_network_interface
+ * 01. lssdp_network_interface_update
  *
  * @param lssdp
  * @return = 0      success
  *         < 0      failed
  */
-int lssdp_get_network_interface(lssdp_ctx * lssdp);
+int lssdp_network_interface_update(lssdp_ctx * lssdp);
 
 /*
- * 02. lssdp_create_socket
+ * 02. lssdp_socket_create
  *
  * @param lssdp
  * @return = 0      success
  *         < 0      failed
  */
-int lssdp_create_socket(lssdp_ctx * lssdp);
+int lssdp_socket_create(lssdp_ctx * lssdp);
 
 /*
- * 03. lssdp_send_msearch
+ * 03. lssdp_socket_read
+ *
+ * @param lssdp
+ * @return = 0      success
+ *         < 0      failed
+ */
+int lssdp_socket_read(lssdp_ctx * lssdp);
+
+/*
+ * 04. lssdp_send_msearch
  *
  * @param lssdp
  * @return = 0      success
@@ -90,7 +99,7 @@ int lssdp_create_socket(lssdp_ctx * lssdp);
 int lssdp_send_msearch(lssdp_ctx * lssdp);
 
 /*
- * 04. lssdp_send_notify
+ * 05. lssdp_send_notify
  *
  * @param lssdp
  * @return = 0      success
@@ -99,22 +108,13 @@ int lssdp_send_msearch(lssdp_ctx * lssdp);
 int lssdp_send_notify(lssdp_ctx * lssdp);
 
 /*
- * 05. lssdp_read_socket
+ * 06. lssdp_neighbor_check_timeout
  *
  * @param lssdp
  * @return = 0      success
  *         < 0      failed
  */
-int lssdp_read_socket(lssdp_ctx * lssdp);
-
-/*
- * 06. lssdp_check_neighbor_timeout
- *
- * @param lssdp
- * @return = 0      success
- *         < 0      failed
- */
-int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp);
+int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp);
 
 /*
  * 07. lssdp_set_log_callback

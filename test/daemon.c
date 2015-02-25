@@ -11,7 +11,7 @@
  *
  * 1. create SSDP socket with port 1900
  * 2. select SSDP socket with timeout 0.5 seconds
- *    - when select return value > 0, invoke lssdp_read_socket
+ *    - when select return value > 0, invoke lssdp_socket_read
  * 3. per 5 seconds do:
  *    - update network interface
  *    - send M-SEARCH and NOTIFY
@@ -69,7 +69,7 @@ int show_interface_list_and_rebind_socket(lssdp_ctx * lssdp) {
     printf("%s\n", i == 0 ? "Empty" : "");
 
     // 2. re-bind SSDP socket
-    if (lssdp_create_socket(lssdp) != 0) {
+    if (lssdp_socket_create(lssdp) != 0) {
         puts("SSDP create socket failed");
         return -1;
     }
@@ -105,10 +105,10 @@ int main() {
         // .packet_received_callback        = show_ssdp_packet   // debug
     };
 
-    /* get network interface first time, network_interface_changed_callback will be invoke
+    /* get network interface at first time, network_interface_changed_callback will be invoke
      * SSDP socket will be created in callback function
      */
-    lssdp_get_network_interface(&lssdp);
+    lssdp_network_interface_update(&lssdp);
 
     long last_time = get_current_time();
     if (last_time < 0) return EXIT_SUCCESS;
@@ -129,7 +129,7 @@ int main() {
         }
 
         if (ret > 0) {
-            lssdp_read_socket(&lssdp);
+            lssdp_socket_read(&lssdp);
         }
 
         // get current time
@@ -138,10 +138,10 @@ int main() {
 
         // doing task per 5 seconds
         if (current_time - last_time >= 5000) {
-            lssdp_get_network_interface(&lssdp);    // 1. update network interface
+            lssdp_network_interface_update(&lssdp); // 1. update network interface
             lssdp_send_msearch(&lssdp);             // 2. send M-SEARCH
             lssdp_send_notify(&lssdp);              // 3. send NOTIFY
-            lssdp_check_neighbor_timeout(&lssdp);   // 4. check neighbor timeout
+            lssdp_neighbor_check_timeout(&lssdp);   // 4. check neighbor timeout
 
             last_time = current_time;               // update last_time
         }

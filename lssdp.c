@@ -88,8 +88,8 @@ static struct {
 };
 
 
-// 01. lssdp_get_network_interface
-int lssdp_get_network_interface(lssdp_ctx * lssdp) {
+// 01. lssdp_network_interface_update
+int lssdp_network_interface_update(lssdp_ctx * lssdp) {
     if (lssdp == NULL) {
         lssdp_error("lssdp should not be NULL\n");
         return -1;
@@ -187,8 +187,8 @@ end:
     return result;
 }
 
-// 02. lssdp_create_socket
-int lssdp_create_socket(lssdp_ctx * lssdp) {
+// 02. lssdp_socket_create
+int lssdp_socket_create(lssdp_ctx * lssdp) {
     if (lssdp == NULL) {
         lssdp_error("lssdp should not be NULL\n");
         return -1;
@@ -259,94 +259,8 @@ end:
     return result;
 }
 
-// 03. lssdp_send_msearch
-int lssdp_send_msearch(lssdp_ctx * lssdp) {
-    // 1. set M-SEARCH packet
-    char msearch[1024] = {};
-    snprintf(msearch, sizeof(msearch),
-        "%s"
-        "HOST:%s:%d\r\n"
-        "MAN:\"ssdp:discover\"\r\n"
-        "ST:%s\r\n"
-        "MX:1\r\n"
-        "\r\n",
-        Global.HEADER_MSEARCH,
-        Global.ADDR_MULTICAST, lssdp->port, // HOST
-        lssdp->header.st                    // ST (Search Target)
-    );
-
-    // 2. send M-SEARCH to each interface
-    size_t i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
-        struct lssdp_interface * interface = &lssdp->interface[i];
-        if (strlen(interface->name) == 0) {
-            break;
-        }
-
-        // avoid sending multicast to localhost
-        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
-            continue;
-        }
-
-        // send M-SEARCH
-        int ret = send_multicast_data(msearch, *interface, lssdp->port);
-        if (ret == 0 && lssdp->debug) {
-            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.MSEARCH, interface->ip);
-        }
-    }
-    return 0;
-}
-
-// 04. lssdp_send_notify
-int lssdp_send_notify(lssdp_ctx * lssdp) {
-    size_t i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
-        struct lssdp_interface * interface = &lssdp->interface[i];
-        if (strlen(interface->name) == 0) {
-            break;
-        }
-
-        // avoid sending multicast to localhost
-        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
-            continue;
-        }
-
-        // set notify packet
-        char notify[1024] = {};
-        char * domain = lssdp->header.location.domain;
-        snprintf(notify, sizeof(notify),
-            "%s"
-            "HOST:%s:%d\r\n"
-            "CACHE-CONTROL:max-age=120\r\n"
-            "ST:%s\r\n"
-            "USN:%s\r\n"
-            "LOCATION:%s%s%s\r\n"
-            "SM_ID:%s\r\n"
-            "DEV_TYPE:%s\r\n"
-            "NTS:ssdp:alive\r\n"
-            "\r\n",
-            Global.HEADER_NOTIFY,
-            Global.ADDR_MULTICAST, lssdp->port,         // HOST
-            lssdp->header.st,                           // ST
-            lssdp->header.usn,                          // USN
-            lssdp->header.location.prefix,              // LOCATION
-            strlen(domain) > 0 ? domain : interface->ip,
-            lssdp->header.location.suffix,
-            lssdp->header.sm_id,                        // SM_ID    (addtional field)
-            lssdp->header.device_type                   // DEV_TYPE (addtional field)
-        );
-
-        // send NOTIFY
-        int ret = send_multicast_data(notify, *interface, lssdp->port);
-        if (ret == 0 && lssdp->debug) {
-            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.NOTIFY, interface->ip);
-        }
-    }
-    return 0;
-}
-
-// 05. lssdp_read_socket
-int lssdp_read_socket(lssdp_ctx * lssdp) {
+// 03. lssdp_socket_read
+int lssdp_socket_read(lssdp_ctx * lssdp) {
     char buffer[2048] = {};
     struct sockaddr_in address = {};
     socklen_t address_len = sizeof(struct sockaddr_in);
@@ -406,8 +320,94 @@ end:
     return result;
 }
 
-// 06. lssdp_check_neighbor_timeout
-int lssdp_check_neighbor_timeout(lssdp_ctx * lssdp) {
+// 04. lssdp_send_msearch
+int lssdp_send_msearch(lssdp_ctx * lssdp) {
+    // 1. set M-SEARCH packet
+    char msearch[1024] = {};
+    snprintf(msearch, sizeof(msearch),
+        "%s"
+        "HOST:%s:%d\r\n"
+        "MAN:\"ssdp:discover\"\r\n"
+        "ST:%s\r\n"
+        "MX:1\r\n"
+        "\r\n",
+        Global.HEADER_MSEARCH,
+        Global.ADDR_MULTICAST, lssdp->port, // HOST
+        lssdp->header.st                    // ST (Search Target)
+    );
+
+    // 2. send M-SEARCH to each interface
+    size_t i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        struct lssdp_interface * interface = &lssdp->interface[i];
+        if (strlen(interface->name) == 0) {
+            break;
+        }
+
+        // avoid sending multicast to localhost
+        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
+            continue;
+        }
+
+        // send M-SEARCH
+        int ret = send_multicast_data(msearch, *interface, lssdp->port);
+        if (ret == 0 && lssdp->debug) {
+            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.MSEARCH, interface->ip);
+        }
+    }
+    return 0;
+}
+
+// 05. lssdp_send_notify
+int lssdp_send_notify(lssdp_ctx * lssdp) {
+    size_t i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        struct lssdp_interface * interface = &lssdp->interface[i];
+        if (strlen(interface->name) == 0) {
+            break;
+        }
+
+        // avoid sending multicast to localhost
+        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
+            continue;
+        }
+
+        // set notify packet
+        char notify[1024] = {};
+        char * domain = lssdp->header.location.domain;
+        snprintf(notify, sizeof(notify),
+            "%s"
+            "HOST:%s:%d\r\n"
+            "CACHE-CONTROL:max-age=120\r\n"
+            "ST:%s\r\n"
+            "USN:%s\r\n"
+            "LOCATION:%s%s%s\r\n"
+            "SM_ID:%s\r\n"
+            "DEV_TYPE:%s\r\n"
+            "NTS:ssdp:alive\r\n"
+            "\r\n",
+            Global.HEADER_NOTIFY,
+            Global.ADDR_MULTICAST, lssdp->port,         // HOST
+            lssdp->header.st,                           // ST
+            lssdp->header.usn,                          // USN
+            lssdp->header.location.prefix,              // LOCATION
+            strlen(domain) > 0 ? domain : interface->ip,
+            lssdp->header.location.suffix,
+            lssdp->header.sm_id,                        // SM_ID    (addtional field)
+            lssdp->header.device_type                   // DEV_TYPE (addtional field)
+        );
+
+        // send NOTIFY
+        int ret = send_multicast_data(notify, *interface, lssdp->port);
+        if (ret == 0 && lssdp->debug) {
+            lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.NOTIFY, interface->ip);
+        }
+    }
+    return 0;
+}
+
+// 06. lssdp_neighbor_check_timeout
+int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     long current_time = get_current_time();
     if (current_time < 0) {
         return -1;
