@@ -284,9 +284,9 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
     neighbor_list_add(lssdp, packet);
 
 end:
-    // invoke data received callback
-    if (lssdp->data_callback != NULL) {
-        lssdp->data_callback(lssdp, buffer, recv_len);
+    // invoke packet received callback
+    if (lssdp->packet_received_callback != NULL) {
+        lssdp->packet_received_callback(lssdp, buffer, recv_len);
     }
 
     return result;

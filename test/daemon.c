@@ -33,7 +33,7 @@ long get_current_time() {
     return (time.tv_sec * 1000) + (time.tv_usec / 1000);
 }
 
-int show_neighbor_list(const struct lssdp_ctx * lssdp) {
+int show_neighbor_list(lssdp_ctx * lssdp) {
     int i = 0;
     lssdp_nbr * nbr;
     puts("\nSSDP List:");
@@ -51,7 +51,7 @@ int show_neighbor_list(const struct lssdp_ctx * lssdp) {
     return 0;
 }
 
-int show_interface_list(const struct lssdp_ctx * lssdp) {
+int show_interface_list(lssdp_ctx * lssdp) {
     puts("\nNetwork Interface List:");
     int i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
@@ -81,7 +81,7 @@ int main() {
         },
 
         // callback
-        .neighbor_list_changed_callback = show_neighbor_list,
+        .neighbor_list_changed_callback     = show_neighbor_list,
         .network_interface_changed_callback = show_interface_list
     };
 

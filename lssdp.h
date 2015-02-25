@@ -49,9 +49,9 @@ typedef struct lssdp_ctx {
     } header;
 
     /* Callback Function */
-    int (* data_callback)(const struct lssdp_ctx * lssdp, const char * data, size_t data_len);
-    int (* network_interface_changed_callback)(const struct lssdp_ctx * lssdp);
-    int (* neighbor_list_changed_callback)(const struct lssdp_ctx * lssdp);
+    int (* network_interface_changed_callback) (struct lssdp_ctx * lssdp);
+    int (* neighbor_list_changed_callback)     (struct lssdp_ctx * lssdp);
+    int (* packet_received_callback)           (struct lssdp_ctx * lssdp, const char * packet, size_t packet_len);
 
 } lssdp_ctx;
 
