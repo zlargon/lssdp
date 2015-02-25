@@ -7,7 +7,7 @@
 #include <sys/time.h>   // gettimeofday
 #include "lssdp.h"
 
-/* socket_listener.c
+/* daemon.c
  *
  * 1. create SSDP socket with port 1900
  * 2. select SSDP socket with timeout 0.5 seconds
