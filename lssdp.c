@@ -294,10 +294,7 @@ end:
 
 // 05. lssdp_send_msearch
 int lssdp_send_msearch(lssdp_ctx * lssdp) {
-    // 1. update network interface
-    lssdp_get_network_interface(lssdp);
-
-    // 2. set M-SEARCH packet
+    // 1. set M-SEARCH packet
     char msearch[1024] = {};
     snprintf(msearch, sizeof(msearch),
         "%s"
@@ -311,7 +308,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         lssdp->header.st                    // ST (Search Target)
     );
 
-    // 3. send M-SEARCH to each interface
+    // 2. send M-SEARCH to each interface
     size_t i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
@@ -331,9 +328,6 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
 
 // 06. lssdp_send_notify
 int lssdp_send_notify(lssdp_ctx * lssdp) {
-    // update network interface
-    lssdp_get_network_interface(lssdp);
-
     // 1. set location suffix
     char suffix[256] = {0};
     const int port = lssdp->header.location.port;
