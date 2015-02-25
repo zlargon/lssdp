@@ -17,12 +17,12 @@
 #define _SIZEOF_ADDR_IFREQ sizeof
 #endif
 
-#define LSSDP_MESSAGE_MAX_LEN   2048
-#define LSSDP_LOCAL_HOST_ADDR   "127.0.0.1"
-#define LSSDP_MULTICAST_ADDR    "239.255.255.250"
+#define LSSDP_MESSAGE_MAX_LEN 2048
+#define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
+#define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
+#define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
 
-
-/* struct: lssdp_packet */
+/** Struct: lssdp_packet **/
 typedef struct lssdp_packet {
     char            method      [LSSDP_FIELD_LEN];      // M-SEARCH, NOTIFY, RESPONSE
     char            st          [LSSDP_FIELD_LEN];      // Search Target
@@ -35,20 +35,7 @@ typedef struct lssdp_packet {
     unsigned long   update_time;
 } lssdp_packet;
 
-// SSDP Method
-static const char * LSSDP_MSEARCH  = "M-SEARCH";
-static const char * LSSDP_NOTIFY   = "NOTIFY";
-static const char * LSSDP_RESPONSE = "RESPONSE";
-
-// SSDP Method Header
-static const char * LSSDP_MSEARCH_HEADER  = "M-SEARCH * HTTP/1.1\r\n";
-static const char * LSSDP_NOTIFY_HEADER   = "NOTIFY * HTTP/1.1\r\n";
-static const char * LSSDP_RESPONSE_HEADER = "HTTP/1.1 200 OK\r\n";
-
-#define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
-#define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
-#define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
-
+/** Internal Function **/
 static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
 static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address);
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
@@ -60,14 +47,44 @@ static int lssdp_log(const char * level, int line, const char * func, const char
 static int show_network_interface(lssdp_ctx * lssdp);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 
-
 /** Global Variable **/
-static int (* lssdp_log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) = NULL;
+static struct {
+    const char * MSEARCH;
+    const char * NOTIFY;
+    const char * RESPONSE;
+
+    const char * HEADER_MSEARCH;
+    const char * HEADER_NOTIFY;
+    const char * HEADER_RESPONSE;
+
+    const char * ADDR_LOCALHOST;
+    const char * ADDR_MULTICAST;
+
+    int (* log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
+
+} Global = {
+    // SSDP Method
+    .MSEARCH  = "M-SEARCH",
+    .NOTIFY   = "NOTIFY",
+    .RESPONSE = "RESPONSE",
+
+    // SSDP Header
+    .HEADER_MSEARCH  = "M-SEARCH * HTTP/1.1\r\n",
+    .HEADER_NOTIFY   = "NOTIFY * HTTP/1.1\r\n",
+    .HEADER_RESPONSE = "HTTP/1.1 200 OK\r\n",
+
+    // IP Address
+    .ADDR_LOCALHOST = "127.0.0.1",
+    .ADDR_MULTICAST = "239.255.255.250",
+
+    // Log Callback
+    .log_callback = NULL
+};
 
 
 // 01. lssdp_set_log_callback
 int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
-    lssdp_log_callback = callback;
+    Global.log_callback = callback;
     return 0;
 }
 
@@ -211,7 +228,7 @@ int lssdp_create_socket(lssdp_ctx * lssdp) {
 
     // set IP_ADD_MEMBERSHIP
     struct ip_mreq imr = {
-        .imr_multiaddr.s_addr = inet_addr(LSSDP_MULTICAST_ADDR),
+        .imr_multiaddr.s_addr = inet_addr(Global.ADDR_MULTICAST),
         .imr_interface.s_addr = htonl(INADDR_ANY)
     };
     if (setsockopt(lssdp->sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, &imr, sizeof(struct ip_mreq)) != 0) {
@@ -268,7 +285,7 @@ int lssdp_read_socket(lssdp_ctx * lssdp) {
     }
 
     // M-SEARCH: send RESPONSE back
-    if (strcmp(packet.method, LSSDP_MSEARCH) == 0) {
+    if (strcmp(packet.method, Global.MSEARCH) == 0) {
         lssdp_send_response(lssdp, address);
         result = 0;
         goto end;
@@ -297,8 +314,8 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         "ST:%s\r\n"
         "MX:1\r\n"
         "\r\n",
-        LSSDP_MSEARCH_HEADER,
-        LSSDP_MULTICAST_ADDR, lssdp->port,  // HOST
+        Global.HEADER_MSEARCH,
+        Global.ADDR_MULTICAST, lssdp->port, // HOST
         lssdp->header.st                    // ST (Search Target)
     );
 
@@ -311,7 +328,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         }
 
         // avoid sending multicast to local host
-        if (interface->s_addr == inet_addr(LSSDP_LOCAL_HOST_ADDR)) {
+        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
 
@@ -342,7 +359,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         }
 
         // avoid sending multicast to local host
-        if (interface->s_addr == inet_addr(LSSDP_LOCAL_HOST_ADDR)) {
+        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
 
@@ -360,13 +377,13 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "DEV_TYPE:%s\r\n"
             "NTS:ssdp:alive\r\n"
             "\r\n",
-            LSSDP_NOTIFY_HEADER,
-            LSSDP_MULTICAST_ADDR, lssdp->port,                  // HOST
-            lssdp->header.st,                                   // ST
-            lssdp->header.usn,                                  // USN
-            strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
-            lssdp->header.sm_id,                                // SM_ID    (addtional field)
-            lssdp->header.device_type                           // DEV_TYPE (addtional field)
+            Global.HEADER_NOTIFY,
+            Global.ADDR_MULTICAST, lssdp->port,              // HOST
+            lssdp->header.st,                                // ST
+            lssdp->header.usn,                               // USN
+            strlen(host) > 0 ? host : interface->ip, suffix, // LOCATION
+            lssdp->header.sm_id,                             // SM_ID    (addtional field)
+            lssdp->header.device_type                        // DEV_TYPE (addtional field)
         );
 
         send_multicast_data(notify, *interface, lssdp->port);
@@ -464,7 +481,7 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
         .sin_family = AF_INET,
         .sin_port = htons(ssdp_port)
     };
-    if (inet_aton(LSSDP_MULTICAST_ADDR, &dest_addr.sin_addr) == 0) {
+    if (inet_aton(Global.ADDR_MULTICAST, &dest_addr.sin_addr) == 0) {
         lssdp_error("inet_aton failed, errno = %s (%d)\n", strerror(errno), errno);
         goto end;
     }
@@ -539,12 +556,12 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         "SM_ID:%s\r\n"
         "DEV_TYPE:%s\r\n"
         "\r\n",
-        LSSDP_RESPONSE_HEADER,
-        strlen(host) > 0 ? host : interface->ip, suffix,    // LOCATION
-        lssdp->header.st,                                   // ST
-        lssdp->header.usn,                                  // USN
-        lssdp->header.sm_id,                                // SM_ID    (addtional field)
-        lssdp->header.device_type                           // DEV_TYPE (addtional field)
+        Global.HEADER_RESPONSE,
+        strlen(host) > 0 ? host : interface->ip, suffix, // LOCATION
+        lssdp->header.st,                                // ST
+        lssdp->header.usn,                               // USN
+        lssdp->header.sm_id,                             // SM_ID    (addtional field)
+        lssdp->header.device_type                        // DEV_TYPE (addtional field)
     );
 
     // 4. set port to address
@@ -577,12 +594,12 @@ static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet 
 
     // 1. compare SSDP Method Header: M-SEARCH, NOTIFY, RESPONSE
     size_t i;
-    if ((i = strlen(LSSDP_MSEARCH_HEADER)) < data_len && memcmp(data, LSSDP_MSEARCH_HEADER, i) == 0) {
-        strcpy(packet->method, LSSDP_MSEARCH);
-    } else if ((i = strlen(LSSDP_NOTIFY_HEADER)) < data_len && memcmp(data, LSSDP_NOTIFY_HEADER, i) == 0) {
-        strcpy(packet->method, LSSDP_NOTIFY);
-    } else if ((i = strlen(LSSDP_RESPONSE_HEADER)) < data_len && memcmp(data, LSSDP_RESPONSE_HEADER, i) == 0) {
-        strcpy(packet->method, LSSDP_RESPONSE);
+    if ((i = strlen(Global.HEADER_MSEARCH)) < data_len && memcmp(data, Global.HEADER_MSEARCH, i) == 0) {
+        strcpy(packet->method, Global.MSEARCH);
+    } else if ((i = strlen(Global.HEADER_NOTIFY)) < data_len && memcmp(data, Global.HEADER_NOTIFY, i) == 0) {
+        strcpy(packet->method, Global.NOTIFY);
+    } else if ((i = strlen(Global.HEADER_RESPONSE)) < data_len && memcmp(data, Global.HEADER_RESPONSE, i) == 0) {
+        strcpy(packet->method, Global.RESPONSE);
     } else {
         lssdp_warn("received unknown SSDP packet\n");
         lssdp_debug("%s\n", data);
@@ -714,7 +731,7 @@ static long get_current_time() {
 }
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
-    if (lssdp_log_callback == NULL) {
+    if (Global.log_callback == NULL) {
         return -1;
     }
 
@@ -727,7 +744,7 @@ static int lssdp_log(const char * level, int line, const char * func, const char
     va_end(args);
 
     // invoke log callback function
-    lssdp_log_callback(__FILE__, "SSDP", level, line, func, message);
+    Global.log_callback(__FILE__, "SSDP", level, line, func, message);
     return 0;
 }
 
