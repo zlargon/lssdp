@@ -13,10 +13,14 @@
  * 2. select SSDP socket with timeout 0.5 seconds
  *    - when select return value > 0, invoke lssdp_read_socket
  * 3. per 5 seconds do:
+ *    - update network interface
  *    - send M-SEARCH and NOTIFY
  *    - check neighbor timeout
- * 4. when neighbor list is changed, show neighbor list
- * 5. when network interface is changed, show interface list
+ * 4. when neighbor list is changed
+ *    - show neighbor list
+ * 5. when network interface is changed
+ *    - show interface list
+ *    - re-bind the socket
  */
 
 int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
@@ -38,7 +42,7 @@ int show_neighbor_list(lssdp_ctx * lssdp) {
     lssdp_nbr * nbr;
     puts("\nSSDP List:");
     for (nbr = lssdp->neighbor_list; nbr != NULL; nbr = nbr->next) {
-        printf("%d. id = %-9s, ip = %-15s, name = %-12s, device_type = %-8s (%ld)\n",
+        printf("%d. id = %-9s, ip = %-20s, name = %-12s, device_type = %-8s (%ld)\n",
             ++i,
             nbr->sm_id,
             nbr->location,
@@ -51,7 +55,8 @@ int show_neighbor_list(lssdp_ctx * lssdp) {
     return 0;
 }
 
-int show_interface_list(lssdp_ctx * lssdp) {
+int show_interface_list_and_rebind_socket(lssdp_ctx * lssdp) {
+    // 1. show interface list
     puts("\nNetwork Interface List:");
     int i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
@@ -62,8 +67,21 @@ int show_interface_list(lssdp_ctx * lssdp) {
         );
     }
     printf("%s\n", i == 0 ? "Empty" : "");
+
+    // 2. re-bind SSDP socket
+    if (lssdp_create_socket(lssdp) != 0) {
+        puts("SSDP create socket failed");
+        return -1;
+    }
+
     return 0;
 }
+
+int show_ssdp_packet(struct lssdp_ctx * lssdp, const char * packet, size_t packet_len) {
+    printf("%s", packet);
+    return 0;
+}
+
 
 int main() {
     lssdp_set_log_callback(log_callback);
@@ -82,18 +100,14 @@ int main() {
 
         // callback
         .neighbor_list_changed_callback     = show_neighbor_list,
-        .network_interface_changed_callback = show_interface_list
+        .network_interface_changed_callback = show_interface_list_and_rebind_socket,
+        // .packet_received_callback        = show_ssdp_packet   // debug
     };
 
-    // get network interface
+    /* get network interface first time, network_interface_changed_callback will be invoke
+     * SSDP socket will be created in callback function
+     */
     lssdp_get_network_interface(&lssdp);
-
-    if (lssdp_create_socket(&lssdp) != 0) {
-        puts("SSDP create socket failed");
-        return -1;
-    }
-
-    printf("SSDP socket = %d\n", lssdp.sock);
 
     long last_time = get_current_time();
     if (last_time < 0) return EXIT_SUCCESS;
@@ -123,18 +137,12 @@ int main() {
 
         // doing task per 5 seconds
         if (current_time - last_time >= 5000) {
+            lssdp_get_network_interface(&lssdp);    // 1. update network interface
+            lssdp_send_msearch(&lssdp);             // 2. send M-SEARCH
+            lssdp_send_notify(&lssdp);              // 3. send NOTIFY
+            lssdp_check_neighbor_timeout(&lssdp);   // 4. check neighbor timeout
 
-            // 1. send M-SEARCH
-            lssdp_send_msearch(&lssdp);
-
-            // 2. send NOTIFY
-            lssdp_send_notify(&lssdp);
-
-            // 3. check neighbor timeout
-            lssdp_check_neighbor_timeout(&lssdp);
-
-            // update last_time
-            last_time = current_time;
+            last_time = current_time;               // update last_time
         }
     }
 
