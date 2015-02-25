@@ -27,7 +27,7 @@ typedef struct lssdp_packet {
     char            method      [LSSDP_FIELD_LEN];      // M-SEARCH, NOTIFY, RESPONSE
     char            st          [LSSDP_FIELD_LEN];      // Search Target
     char            usn         [LSSDP_FIELD_LEN];      // Unique Service Name
-    char            location    [LSSDP_FIELD_LEN];      // Location
+    char            location    [LSSDP_LOCATION_LEN];   // Location
 
     /* Additional SSDP Header Fields */
     char            sm_id       [LSSDP_FIELD_LEN];
@@ -658,7 +658,7 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
     }
 
     if (field_len == strlen("location") && strncasecmp(field, "location", field_len) == 0) {
-        memcpy(packet->location, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
+        memcpy(packet->location, value, value_len < LSSDP_LOCATION_LEN ? value_len : LSSDP_LOCATION_LEN - 1);
         return 0;
     }
 
@@ -795,7 +795,7 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
     memcpy(nbr->usn,         packet.usn,         LSSDP_FIELD_LEN);
     memcpy(nbr->sm_id,       packet.sm_id,       LSSDP_FIELD_LEN);
     memcpy(nbr->device_type, packet.device_type, LSSDP_FIELD_LEN);
-    memcpy(nbr->location,    packet.location,    LSSDP_FIELD_LEN);
+    memcpy(nbr->location,    packet.location,    LSSDP_LOCATION_LEN);
     nbr->update_time = packet.update_time;
     nbr->next = NULL;
 

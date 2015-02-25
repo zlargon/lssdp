@@ -4,10 +4,11 @@
 #include <stdint.h>     // uint32_t
 
 /* struct : lssdp_nbr */
-#define LSSDP_FIELD_LEN     256
+#define LSSDP_FIELD_LEN         128
+#define LSSDP_LOCATION_LEN      256
 typedef struct lssdp_nbr {
     char            usn         [LSSDP_FIELD_LEN];          // Unique Service Name (Device Name or MAC)
-    char            location    [LSSDP_FIELD_LEN];          // URL or IP(:Port)
+    char            location    [LSSDP_LOCATION_LEN];       // URL or IP(:Port)
 
     /* Additional SSDP Header Fields */
     char            sm_id       [LSSDP_FIELD_LEN];
