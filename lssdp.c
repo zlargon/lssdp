@@ -49,7 +49,6 @@ static int get_colon_index(const char * string, size_t start, size_t end);
 static int trim_spaces(const char * string, size_t * start, size_t * end);
 static long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
-static int show_network_interface(lssdp_ctx * lssdp);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 static void * neighbor_list_free(lssdp_nbr * list);
 
@@ -539,7 +538,6 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     // interface is not found
     if (interface == NULL) {
         lssdp_error("M-SEARCH Packet IP (%s) is not exist in Local Area Network!\n", msearch_ip);
-        show_network_interface(lssdp);
         return -1;
     }
 
@@ -749,23 +747,6 @@ static int lssdp_log(const char * level, int line, const char * func, const char
 
     // invoke log callback function
     Global.log_callback(__FILE__, "SSDP", level, line, func, message);
-    return 0;
-}
-
-static int show_network_interface(lssdp_ctx * lssdp) {
-    lssdp_debug("Network Interface List:\n");
-    lssdp_debug("-------------------------\n");
-    int i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
-        if (strlen(lssdp->interface[i].name) == 0) {
-            // there is no more interface in list
-            break;
-        }
-
-        lssdp_debug("%d. %s : %s\n", i + 1, lssdp->interface[i].name, lssdp->interface[i].ip);
-    }
-    if (i == 0) lssdp_debug("Empty!\n");
-    lssdp_debug("-------------------------\n");
     return 0;
 }
 
