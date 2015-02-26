@@ -251,6 +251,11 @@ end:
 
 // 03. lssdp_socket_close
 int lssdp_socket_close(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
     if (lssdp->sock < 0) {
         // socket is already close
         return 0;
@@ -269,13 +274,24 @@ int lssdp_socket_close(lssdp_ctx * lssdp) {
 
 // 04. lssdp_socket_read
 int lssdp_socket_read(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
+    // check socket
+    if (lssdp->sock < 0) {
+        lssdp_error("lssdp->sock (%d) has not been setup.\n", lssdp->sock);
+        return -1;
+    }
+
     char buffer[2048] = {};
     struct sockaddr_in address = {};
     socklen_t address_len = sizeof(struct sockaddr_in);
 
     ssize_t recv_len = recvfrom(lssdp->sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&address, &address_len);
     if (recv_len == -1) {
-        lssdp_error("recvfrom failed, errno = %s (%d)\n", strerror(errno), errno);
+        lssdp_error("recvfrom fd %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
         return -1;
     }
 
@@ -330,6 +346,11 @@ end:
 
 // 05. lssdp_send_msearch
 int lssdp_send_msearch(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
     // 1. set M-SEARCH packet
     char msearch[1024] = {};
     snprintf(msearch, sizeof(msearch),
@@ -349,6 +370,9 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
         if (strlen(interface->name) == 0) {
+            if (i == 0) {
+                lssdp_warn("Network Interface is empty, please remember to update it.\n");
+            }
             break;
         }
 
@@ -368,10 +392,18 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
 
 // 06. lssdp_send_notify
 int lssdp_send_notify(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
     size_t i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
         if (strlen(interface->name) == 0) {
+            if (i == 0) {
+                lssdp_warn("Network Interface is empty, please remember to update it.\n");
+            }
             break;
         }
 
@@ -416,12 +448,28 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
 
 // 07. lssdp_neighbor_remove_all
 int lssdp_neighbor_remove_all(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
     lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
     return 0;
 }
 
 // 08. lssdp_neighbor_check_timeout
 int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
+    if (lssdp == NULL) {
+        lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
+    // check neighbor_timeout
+    if (lssdp->neighbor_timeout <= 0) {
+        lssdp_warn("lssdp->neighbor_timeout (%ld) is invalid, ignore check_timeout request.\n", lssdp->neighbor_timeout);
+        return 0;
+    }
+
     long current_time = get_current_time();
     if (current_time < 0) {
         return -1;
@@ -558,6 +606,10 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     struct lssdp_interface * interface = NULL;
     int i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+        if (i == 0 && strlen(lssdp->interface[i].name) == 0) {
+            lssdp_warn("Network Interface is empty, please remember to update it.\n");
+        }
+
         if ((lssdp->interface[i].s_addr & mask) == (address.sin_addr.s_addr & mask)) {
             interface = &lssdp->interface[i];
             break;
