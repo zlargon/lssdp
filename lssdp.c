@@ -7,6 +7,7 @@
 
 #include <unistd.h>     // close
 #include <arpa/inet.h>  // inet_ntop
+#include <ifaddrs.h>    // getifaddrs, freeifaddrs
 #include <sys/ioctl.h>  // ioctl, SIOCGIFCONF
 #include <sys/time.h>   // gettimeofday
 #include <net/if.h>     // struct ifconf, struct ifreq
@@ -14,11 +15,6 @@
 
 
 /** Definition **/
-/* This is defined on Mac OS X */
-#ifndef _SIZEOF_ADDR_IFREQ
-#define _SIZEOF_ADDR_IFREQ sizeof
-#endif
-
 #define LSSDP_BUFFER_LEN    2048
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
 #define lssdp_info(fmt, agrs...)  lssdp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
@@ -97,94 +93,78 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
 
     const size_t SIZE_OF_INTERFACE_LIST = sizeof(struct lssdp_interface) * LSSDP_INTERFACE_LIST_SIZE;
 
-    // copy orginal interface
+    // 1. copy orginal interface
     struct lssdp_interface original_interface[LSSDP_INTERFACE_LIST_SIZE] = {};
     memcpy(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST);
 
-    // reset lssdp->interface
+    // 2. reset lssdp->interface
     memset(lssdp->interface, 0, SIZE_OF_INTERFACE_LIST);
 
-    int result = -1;
-
-    /* Reference to this article:
-     * http://stackoverflow.com/a/8007079
-     */
-
-    // create socket
-    int fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (fd < 0) {
-        lssdp_error("create socket failed, errno = %s (%d)\n", strerror(errno), errno);
-        goto end;
+    // 3. getifaddrs
+    struct ifaddrs * ifap;  // need to be free
+    if (getifaddrs(&ifap) != 0) {
+        lssdp_error("getifaddrs failed, errno = %s (%d)\n", strerror(errno), errno);
+        return -1;
     }
 
-    char buffer[LSSDP_BUFFER_LEN] = {};
-    struct ifconf ifc = {
-        .ifc_len = sizeof(buffer),
-        .ifc_buf = (caddr_t) buffer
-    };
-
-    if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
-        lssdp_error("ioctl failed, errno = %s (%d)\n", strerror(errno), errno);
-        goto end;
-    }
-
-    size_t index, num = 0;
-    struct ifreq * ifr;
-    for (index = 0; index < ifc.ifc_len; index += _SIZEOF_ADDR_IFREQ(*ifr)) {
-        ifr = (struct ifreq *)(buffer + index);
-        if (ifr->ifr_addr.sa_family != AF_INET) {
-            // only support IPv4
+    // 4. setup lssdp->interface
+    int num = 0;
+    struct ifaddrs * ifa;
+    for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr->sa_family != AF_INET) {
             continue;
         }
 
         // get interface ip string
-        char ip[LSSDP_IP_LEN] = {};  // ip = "xxx.xxx.xxx.xxx"
-        struct sockaddr_in * addr_in = (struct sockaddr_in *) &ifr->ifr_addr;
-        if (inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)) == NULL) {
-            lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
-            goto end;
+        char ip[LSSDP_IP_LEN] = {};
+        struct sockaddr_in * addr = (struct sockaddr_in *) ifa->ifa_addr;
+        if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)) == NULL) {
+            printf("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
+            continue;
         }
 
         // too many network interface
         if (num >= LSSDP_INTERFACE_LIST_SIZE) {
             lssdp_warn("the number of network interface is over than max size %d\n", LSSDP_INTERFACE_LIST_SIZE);
-            lssdp_debug("%2d. %s : %s\n", num, ifr->ifr_name, ip);
+            lssdp_debug("%2d. %s : %s\n", num, ifa->ifa_name, ip);
+            break;
         } else {
             // set interface
-            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifr->ifr_name); // name
+            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifa->ifa_name); // name
             snprintf(lssdp->interface[num].ip,   LSSDP_IP_LEN,             "%s", ip);            // ip string
-            lssdp->interface[num].s_addr = addr_in->sin_addr.s_addr;                             // address in network byte order
+            lssdp->interface[num].s_addr = addr->sin_addr.s_addr;                                // address in network byte order
         }
 
         // increase interface number
         num++;
     }
+    freeifaddrs(ifap);
 
-    result = 0;
-end:
-    if (fd >= 0 && close(fd) != 0) {
-        lssdp_error("close fd %d failed, errno = %s (%d)\n", strerror(errno), errno);
-    }
 
     // compare with original interface
-    if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) != 0) {
-        // 1. force clean up neighbor_list
-        if (lssdp->neighbor_list != NULL) {
-            lssdp_neighbor_remove_all(lssdp);
+    if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) == 0) {
+        // interface is not changed
+        return 0;
+    }
 
-            // invoke neighbor list changed callback
-            if (lssdp->neighbor_list_changed_callback != NULL) {
-                lssdp->neighbor_list_changed_callback(lssdp);
-            }
-        }
+    /* Network Interface is changed */
 
-        // 2. invoke network interface changed callback
-        if (lssdp->network_interface_changed_callback != NULL) {
-            lssdp->network_interface_changed_callback(lssdp);
+    // 1. force clean up neighbor_list
+    if (lssdp->neighbor_list != NULL) {
+        lssdp_neighbor_remove_all(lssdp);
+
+        // invoke neighbor list changed callback
+        if (lssdp->neighbor_list_changed_callback != NULL) {
+            lssdp->neighbor_list_changed_callback(lssdp);
         }
     }
 
-    return result;
+    // 2. invoke network interface changed callback
+    if (lssdp->network_interface_changed_callback != NULL) {
+        lssdp->network_interface_changed_callback(lssdp);
+    }
+
+    return 0;
 }
 
 // 02. lssdp_socket_create
