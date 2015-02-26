@@ -1,9 +1,5 @@
 CFLAGS = -g -Wall -I../
 
-ifdef OSX
-CFLAGS += -D__OSX__
-endif
-
 OBJS = ../lssdp.o
 
 all: daemon network_interface
