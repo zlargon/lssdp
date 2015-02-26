@@ -19,7 +19,7 @@
 #define _SIZEOF_ADDR_IFREQ sizeof
 #endif
 
-#define LSSDP_MESSAGE_MAX_LEN 2048
+#define LSSDP_BUFFER_LEN    2048
 #define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
 #define lssdp_info(fmt, agrs...)  lssdp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
 #define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
@@ -117,7 +117,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
         goto end;
     }
 
-    char buffer[4096] = {0};
+    char buffer[LSSDP_BUFFER_LEN] = {};
     struct ifconf ifc = {
         .ifc_len = sizeof(buffer),
         .ifc_buf = (caddr_t) buffer
@@ -138,7 +138,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
         }
 
         // get interface ip string
-        char ip[LSSDP_IP_LEN] = {0};  // ip = "xxx.xxx.xxx.xxx"
+        char ip[LSSDP_IP_LEN] = {};  // ip = "xxx.xxx.xxx.xxx"
         struct sockaddr_in * addr_in = (struct sockaddr_in *) &ifr->ifr_addr;
         if (inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)) == NULL) {
             lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
@@ -285,7 +285,7 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    char buffer[2048] = {};
+    char buffer[LSSDP_BUFFER_LEN] = {};
     struct sockaddr_in address = {};
     socklen_t address_len = sizeof(struct sockaddr_in);
 
@@ -352,7 +352,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
     }
 
     // 1. set M-SEARCH packet
-    char msearch[1024] = {};
+    char msearch[LSSDP_BUFFER_LEN] = {};
     snprintf(msearch, sizeof(msearch),
         "%s"
         "HOST:%s:%d\r\n"
@@ -413,7 +413,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         }
 
         // set notify packet
-        char notify[1024] = {};
+        char notify[LSSDP_BUFFER_LEN] = {};
         char * domain = lssdp->header.location.domain;
         snprintf(notify, sizeof(notify),
             "%s"
@@ -591,7 +591,7 @@ end:
 
 static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     // get M-SEARCH IP
-    char msearch_ip[LSSDP_IP_LEN] = {0};
+    char msearch_ip[LSSDP_IP_LEN] = {};
     if (inet_ntop(AF_INET, &address.sin_addr, msearch_ip, sizeof(msearch_ip)) == NULL) {
         lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
         return -1;
@@ -625,7 +625,7 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     }
 
     // 2. set response packet
-    char response[1024] = {};
+    char response[LSSDP_BUFFER_LEN] = {};
     char * domain = lssdp->header.location.domain;
     int response_len = snprintf(response, sizeof(response),
         "%s"
@@ -828,12 +828,12 @@ static int lssdp_log(const char * level, int line, const char * func, const char
         return -1;
     }
 
-    char message[LSSDP_MESSAGE_MAX_LEN] = {0};
+    char message[LSSDP_BUFFER_LEN] = {};
 
     // create message by va_list
     va_list args;
     va_start(args, format);
-    vsnprintf(message, LSSDP_MESSAGE_MAX_LEN, format, args);
+    vsnprintf(message, LSSDP_BUFFER_LEN, format, args);
     va_end(args);
 
     // invoke log callback function
