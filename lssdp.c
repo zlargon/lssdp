@@ -194,14 +194,8 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    if (lssdp->sock >= 0) {
-        if (close(lssdp->sock) != 0) {
-            lssdp_error("close socket %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
-            return -1;
-        };
-        lssdp_debug("close SSDP socket %d\n", lssdp->sock);
-        lssdp->sock = -1;
-    }
+    // close original SSDP socket
+    lssdp_socket_close(lssdp);
 
     // create UDP socket
     lssdp->sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -250,16 +244,30 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
     result = 0;
 end:
     if (result == -1) {
-        if (close(lssdp->sock) != 0) {
-            lssdp_error("close socket %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
-            return -1;
-        };
-        lssdp->sock = -1;
+        lssdp_socket_close(lssdp);
     }
     return result;
 }
 
-// 03. lssdp_socket_read
+// 03. lssdp_socket_close
+int lssdp_socket_close(lssdp_ctx * lssdp) {
+    if (lssdp->sock < 0) {
+        // socket is already close
+        return 0;
+    }
+
+    // close socket
+    if (close(lssdp->sock) != 0) {
+        lssdp_error("close socket %d failed, errno = %s (%d)\n", lssdp->sock, strerror(errno), errno);
+        return -1;
+    };
+
+    lssdp_debug("close SSDP socket %d\n", lssdp->sock);
+    lssdp->sock = -1;
+    return 0;
+}
+
+// 04. lssdp_socket_read
 int lssdp_socket_read(lssdp_ctx * lssdp) {
     char buffer[2048] = {};
     struct sockaddr_in address = {};
@@ -320,7 +328,7 @@ end:
     return result;
 }
 
-// 04. lssdp_send_msearch
+// 05. lssdp_send_msearch
 int lssdp_send_msearch(lssdp_ctx * lssdp) {
     // 1. set M-SEARCH packet
     char msearch[1024] = {};
@@ -358,7 +366,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 05. lssdp_send_notify
+// 06. lssdp_send_notify
 int lssdp_send_notify(lssdp_ctx * lssdp) {
     size_t i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
@@ -406,7 +414,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 06. lssdp_neighbor_check_timeout
+// 07. lssdp_neighbor_check_timeout
 int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     long current_time = get_current_time();
     if (current_time < 0) {
@@ -446,7 +454,7 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 07. lssdp_set_log_callback
+// 08. lssdp_set_log_callback
 int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     Global.log_callback = callback;
     return 0;
