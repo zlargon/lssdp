@@ -16,10 +16,10 @@ int log_callback(const char * file, const char * tag, const char * level, int li
 }
 
 int show_interface_list(lssdp_ctx * lssdp) {
-    puts("\nNetwork Interface List:");
-    int i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
-        printf("%d. %-6s: %s\n",
+    printf("\nNetwork Interface List (%zu):\n", lssdp->interface_num);
+    size_t i;
+    for (i = 0; i < lssdp->interface_num; i++) {
+        printf("%zu. %-6s: %s\n",
             i + 1,
             lssdp->interface[i].name,
             lssdp->interface[i].ip

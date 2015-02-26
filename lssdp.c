@@ -279,7 +279,7 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
 
     // ignore the SSDP packet received from self
     size_t i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+    for (i = 0; i < lssdp->interface_num; i++) {
         if (lssdp->interface[i].s_addr == address.sin_addr.s_addr) {
             result = 0;
             goto end;
@@ -331,6 +331,12 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    // check network inerface number
+    if (lssdp->interface_num == 0) {
+        lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.MSEARCH);
+        return -1;
+    }
+
     // 1. set M-SEARCH packet
     char msearch[LSSDP_BUFFER_LEN] = {};
     snprintf(msearch, sizeof(msearch),
@@ -348,14 +354,8 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
 
     // 2. send M-SEARCH to each interface
     size_t i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+    for (i = 0; i < lssdp->interface_num; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
-        if (strlen(interface->name) == 0) {
-            if (i == 0) {
-                lssdp_warn("Network Interface is empty, please remember to update it.\n");
-            }
-            break;
-        }
 
         // avoid sending multicast to localhost
         if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
@@ -368,6 +368,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
             lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.MSEARCH, interface->ip);
         }
     }
+
     return 0;
 }
 
@@ -378,15 +379,15 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    // check network inerface number
+    if (lssdp->interface_num == 0) {
+        lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.NOTIFY);
+        return -1;
+    }
+
     size_t i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
+    for (i = 0; i < lssdp->interface_num; i++) {
         struct lssdp_interface * interface = &lssdp->interface[i];
-        if (strlen(interface->name) == 0) {
-            if (i == 0) {
-                lssdp_warn("Network Interface is empty, please remember to update it.\n");
-            }
-            break;
-        }
 
         // avoid sending multicast to localhost
         if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
@@ -427,6 +428,10 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             lssdp_info("SEND => %-8s   %s => MULTICAST\n", Global.NOTIFY, interface->ip);
         }
     }
+
+    // network inerface is empty
+    if (i == 0) lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.NOTIFY);
+
     return 0;
 }
 
@@ -588,12 +593,8 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
      */
     uint32_t mask = 0x00ffffff;
     struct lssdp_interface * interface = NULL;
-    int i;
-    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE; i++) {
-        if (i == 0 && strlen(lssdp->interface[i].name) == 0) {
-            lssdp_warn("Network Interface is empty, please remember to update it.\n");
-        }
-
+    size_t i;
+    for (i = 0; i < lssdp->interface_num; i++) {
         if ((lssdp->interface[i].s_addr & mask) == (address.sin_addr.s_addr & mask)) {
             interface = &lssdp->interface[i];
             break;
@@ -602,6 +603,11 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
 
     // interface is not found
     if (interface == NULL) {
+        // network inerface is empty
+        if (lssdp->interface_num == 0) {
+            lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.RESPONSE);
+        }
+
         if (lssdp->debug) {
             lssdp_info("RECV <- %-8s   Interface is not found        %s\n", Global.MSEARCH, msearch_ip);
         }
