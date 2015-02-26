@@ -357,10 +357,11 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         "%s"
         "HOST:%s:%d\r\n"
         "MAN:\"ssdp:discover\"\r\n"
-        "ST:%s\r\n"
         "MX:1\r\n"
+        "ST:%s\r\n"
+        "USER-AGENT:OS/version product/version\r\n"
         "\r\n",
-        Global.HEADER_MSEARCH,
+        Global.HEADER_MSEARCH,              // HEADER
         Global.ADDR_MULTICAST, lssdp->port, // HOST
         lssdp->header.search_target         // ST (Search Target)
     );
@@ -419,22 +420,25 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "%s"
             "HOST:%s:%d\r\n"
             "CACHE-CONTROL:max-age=120\r\n"
-            "ST:%s\r\n"
-            "USN:%s\r\n"
             "LOCATION:%s%s%s\r\n"
+            "SERVER:OS/version product/version\r\n"
+            "NT:%s\r\n"
+            "NTS:ssdp:alive\r\n"
+            "USN:%s\r\n"
             "SM_ID:%s\r\n"
             "DEV_TYPE:%s\r\n"
-            "NTS:ssdp:alive\r\n"
+            "ST:%s\r\n"                                 // Forward Compatbility
             "\r\n",
-            Global.HEADER_NOTIFY,
+            Global.HEADER_NOTIFY,                       // HEADER
             Global.ADDR_MULTICAST, lssdp->port,         // HOST
-            lssdp->header.search_target,                // ST
-            lssdp->header.unique_service_name,          // USN
             lssdp->header.location.prefix,              // LOCATION
             strlen(domain) > 0 ? domain : interface->ip,
             lssdp->header.location.suffix,
+            lssdp->header.search_target,                // NT (Notify Type)
+            lssdp->header.unique_service_name,          // USN
             lssdp->header.sm_id,                        // SM_ID    (addtional field)
-            lssdp->header.device_type                   // DEV_TYPE (addtional field)
+            lssdp->header.device_type,                  // DEV_TYPE (addtional field)
+            lssdp->header.search_target                 // ST (Search Target)
         );
 
         // send NOTIFY
@@ -633,17 +637,17 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         "DATE:\r\n"
         "EXT:\r\n"
         "LOCATION:%s%s%s\r\n"
-        "SERVER:OS/version UPnP/1.1 product/version\r\n"
+        "SERVER:OS/version product/version\r\n"
         "ST:%s\r\n"
         "USN:%s\r\n"
         "SM_ID:%s\r\n"
         "DEV_TYPE:%s\r\n"
         "\r\n",
-        Global.HEADER_RESPONSE,
+        Global.HEADER_RESPONSE,                     // HEADER
         lssdp->header.location.prefix,              // LOCATION
         strlen(domain) > 0 ? domain : interface->ip,
         lssdp->header.location.suffix,
-        lssdp->header.search_target,                // ST
+        lssdp->header.search_target,                // ST (Search Target)
         lssdp->header.unique_service_name,          // USN
         lssdp->header.sm_id,                        // SM_ID    (addtional field)
         lssdp->header.device_type                   // DEV_TYPE (addtional field)
@@ -760,6 +764,11 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
 
     // 4. set each field's value to packet
     if (field_len == strlen("st") && strncasecmp(field, "st", field_len) == 0) {
+        memcpy(packet->st, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
+        return 0;
+    }
+
+    if (field_len == strlen("nt") && strncasecmp(field, "nt", field_len) == 0) {
         memcpy(packet->st, value, value_len < LSSDP_FIELD_LEN ? value_len : LSSDP_FIELD_LEN - 1);
         return 0;
     }
