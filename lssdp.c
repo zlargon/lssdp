@@ -183,7 +183,7 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
     lssdp_socket_close(lssdp);
 
     // create UDP socket
-    lssdp->sock = socket(PF_INET, SOCK_DGRAM, 0);
+    lssdp->sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (lssdp->sock < 0) {
         lssdp_error("create socket failed, errno = %s (%d)\n", strerror(errno), errno);
         return -1;
