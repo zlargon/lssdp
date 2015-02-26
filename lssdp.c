@@ -120,7 +120,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
         char ip[LSSDP_IP_LEN] = {};
         struct sockaddr_in * addr = (struct sockaddr_in *) ifa->ifa_addr;
         if (inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip)) == NULL) {
-            printf("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
+            lssdp_error("inet_ntop failed, errno = %s (%d)\n", strerror(errno), errno);
             continue;
         }
 
