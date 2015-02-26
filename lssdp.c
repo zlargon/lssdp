@@ -156,7 +156,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
 
     // 1. force clean up neighbor_list
     if (lssdp->neighbor_list != NULL) {
-        lssdp_neighbor_remove_all(lssdp);
+        lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
 
         // invoke neighbor list changed callback
         if (lssdp->neighbor_list_changed_callback != NULL) {
@@ -440,18 +440,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 07. lssdp_neighbor_remove_all
-int lssdp_neighbor_remove_all(lssdp_ctx * lssdp) {
-    if (lssdp == NULL) {
-        lssdp_error("lssdp should not be NULL\n");
-        return -1;
-    }
-
-    lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
-    return 0;
-}
-
-// 08. lssdp_neighbor_check_timeout
+// 07. lssdp_neighbor_check_timeout
 int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     if (lssdp == NULL) {
         lssdp_error("lssdp should not be NULL\n");
@@ -502,7 +491,7 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 09. lssdp_set_log_callback
+// 08. lssdp_set_log_callback
 int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     Global.log_callback = callback;
     return 0;

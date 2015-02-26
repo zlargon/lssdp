@@ -118,16 +118,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp);
 int lssdp_send_notify(lssdp_ctx * lssdp);
 
 /*
- * 07. lssdp_neighbor_remove_all
- *
- * @param lssdp
- * @return = 0      success
- *         < 0      failed
- */
-int lssdp_neighbor_remove_all(lssdp_ctx * lssdp);
-
-/*
- * 08. lssdp_neighbor_check_timeout
+ * 07. lssdp_neighbor_check_timeout
  *
  * @param lssdp
  * @return = 0      success
@@ -136,7 +127,7 @@ int lssdp_neighbor_remove_all(lssdp_ctx * lssdp);
 int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp);
 
 /*
- * 09. lssdp_set_log_callback
+ * 08. lssdp_set_log_callback
  *
  * @param callback
  * @return = 0    success
