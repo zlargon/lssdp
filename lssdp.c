@@ -47,6 +47,7 @@ static long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 static void * neighbor_list_free(lssdp_nbr * list);
+static struct lssdp_interface * find_interface_in_LAN(lssdp_ctx * lssdp, uint32_t address);
 
 
 /** Global Variable **/
@@ -590,30 +591,15 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         return -1;
     }
 
-    /* 1. find the interface which is in LAN
-     *    e.g:
-     *         192.168.1.x -> 192.168.1.y (in LAN)
-     *         192.168.1.x -> 10.5.2.y    (not in LAN)
-     */
-    uint32_t mask = 0x00ffffff;
-    struct lssdp_interface * interface = NULL;
-    size_t i;
-    for (i = 0; i < lssdp->interface_num; i++) {
-        if ((lssdp->interface[i].addr & mask) == (address.sin_addr.s_addr & mask)) {
-            interface = &lssdp->interface[i];
-            break;
-        }
-    }
-
-    // interface is not found
+    // 1. find the interface which is in LAN
+    struct lssdp_interface * interface = find_interface_in_LAN(lssdp, address.sin_addr.s_addr);
     if (interface == NULL) {
-        // network inerface is empty
-        if (lssdp->interface_num == 0) {
-            lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.RESPONSE);
-        }
-
         if (lssdp->debug) {
             lssdp_info("RECV <- %-8s   Interface is not found        %s\n", Global.MSEARCH, msearch_ip);
+        }
+
+        if (lssdp->interface_num == 0) {
+            lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.RESPONSE);
         }
         return -1;
     }
@@ -913,6 +899,20 @@ static void * neighbor_list_free(lssdp_nbr * list) {
     if (list != NULL) {
         neighbor_list_free(list->next);
         free(list);
+    }
+    return NULL;
+}
+
+static struct lssdp_interface * find_interface_in_LAN(lssdp_ctx * lssdp, uint32_t address) {
+    struct lssdp_interface * ifc;
+    size_t i;
+    for (i = 0; i < lssdp->interface_num; i++) {
+        ifc = &lssdp->interface[i];
+
+        // mask address to check whether the interface is under the same Local Network Area or not
+        if ((ifc->addr & ifc->netmask) == (address & ifc->netmask)) {
+            return ifc;
+        }
     }
     return NULL;
 }
