@@ -313,10 +313,10 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
     }
 
     // check search target
-    if (strcmp(packet.st, lssdp->header.st) != 0) {
+    if (strcmp(packet.st, lssdp->header.search_target) != 0) {
         // search target is not match
         if (lssdp->debug) {
-            lssdp_info("RECV <- %-8s   not match with %-14s %s\n", packet.method, lssdp->header.st, packet.location);
+            lssdp_info("RECV <- %-8s   not match with %-14s %s\n", packet.method, lssdp->header.search_target, packet.location);
         }
         goto end;
     }
@@ -362,7 +362,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         "\r\n",
         Global.HEADER_MSEARCH,
         Global.ADDR_MULTICAST, lssdp->port, // HOST
-        lssdp->header.st                    // ST (Search Target)
+        lssdp->header.search_target         // ST (Search Target)
     );
 
     // 2. send M-SEARCH to each interface
@@ -428,8 +428,8 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "\r\n",
             Global.HEADER_NOTIFY,
             Global.ADDR_MULTICAST, lssdp->port,         // HOST
-            lssdp->header.st,                           // ST
-            lssdp->header.usn,                          // USN
+            lssdp->header.search_target,                // ST
+            lssdp->header.unique_service_name,          // USN
             lssdp->header.location.prefix,              // LOCATION
             strlen(domain) > 0 ? domain : interface->ip,
             lssdp->header.location.suffix,
@@ -643,8 +643,8 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
         lssdp->header.location.prefix,              // LOCATION
         strlen(domain) > 0 ? domain : interface->ip,
         lssdp->header.location.suffix,
-        lssdp->header.st,                           // ST
-        lssdp->header.usn,                          // USN
+        lssdp->header.search_target,                // ST
+        lssdp->header.unique_service_name,          // USN
         lssdp->header.sm_id,                        // SM_ID    (addtional field)
         lssdp->header.device_type                   // DEV_TYPE (addtional field)
     );

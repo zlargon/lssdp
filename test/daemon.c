@@ -92,11 +92,11 @@ int main() {
         .port = 1900,
         .neighbor_timeout = 15000,  // 15 seconds
         .header = {
-            .st              = "ST_P2P",
-            .usn             = "f835dd000001",
-            .sm_id           = "700000123",
-            .device_type     = "BUZZI",
-            .location.suffix = ":5678"
+            .search_target       = "ST_P2P",
+            .unique_service_name = "f835dd000001",
+            .sm_id               = "700000123",
+            .device_type         = "DEV_TYPE",
+            .location.suffix     = ":5678"
         },
 
         // callback

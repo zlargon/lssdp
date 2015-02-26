@@ -39,14 +39,13 @@ typedef struct lssdp_ctx {
 
     /* SSDP Header Fields */
     struct {
-        char        st          [LSSDP_FIELD_LEN];          // Search Target
-        char        usn         [LSSDP_FIELD_LEN];          // Unique Service Name
-
-        // Location (optional)
-        struct {
-            char    prefix      [LSSDP_FIELD_LEN];          // Protocal: "https://" or "http://"
-            char    domain      [LSSDP_FIELD_LEN];          // if domain is empty, using Interface IP as default
-            char    suffix      [LSSDP_FIELD_LEN];          // URI or Port: "/index.html" or ":80"
+        /* SSDP Standard Header Fields */
+        char        search_target       [LSSDP_FIELD_LEN];  // Search Target
+        char        unique_service_name [LSSDP_FIELD_LEN];  // Unique Service Name: MAC or User Name
+        struct {                                            // Location (optional):
+            char    prefix              [LSSDP_FIELD_LEN];  // Protocal: "https://" or "http://"
+            char    domain              [LSSDP_FIELD_LEN];  // if domain is empty, using Interface IP as default
+            char    suffix              [LSSDP_FIELD_LEN];  // URI or Port: "/index.html" or ":80"
         } location;
 
         /* Additional SSDP Header Fields */
