@@ -170,7 +170,7 @@ end:
     if (memcmp(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST) != 0) {
         // 1. force clean up neighbor_list
         if (lssdp->neighbor_list != NULL) {
-            lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
+            lssdp_neighbor_remove_all(lssdp);
 
             // invoke neighbor list changed callback
             if (lssdp->neighbor_list_changed_callback != NULL) {
@@ -414,7 +414,13 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 07. lssdp_neighbor_check_timeout
+// 07. lssdp_neighbor_remove_all
+int lssdp_neighbor_remove_all(lssdp_ctx * lssdp) {
+    lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
+    return 0;
+}
+
+// 08. lssdp_neighbor_check_timeout
 int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     long current_time = get_current_time();
     if (current_time < 0) {
@@ -454,7 +460,7 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
     return 0;
 }
 
-// 08. lssdp_set_log_callback
+// 09. lssdp_set_log_callback
 int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     Global.log_callback = callback;
     return 0;
