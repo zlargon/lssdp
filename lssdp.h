@@ -75,6 +75,8 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp);
 /*
  * 02. lssdp_socket_create
  *
+ * if SSDP socket is exist, close the socket first then create.
+ *
  * @param lssdp
  * @return = 0      success
  *         < 0      failed
@@ -83,6 +85,8 @@ int lssdp_socket_create(lssdp_ctx * lssdp);
 
 /*
  * 03. lssdp_socket_close
+ *
+ * when socket close, SSDP neighbor list will be force clean up.
  *
  * @param lssdp
  * @return = 0      success

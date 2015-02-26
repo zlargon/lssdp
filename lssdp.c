@@ -254,6 +254,17 @@ int lssdp_socket_close(lssdp_ctx * lssdp) {
 
     lssdp_debug("close SSDP socket %d\n", lssdp->sock);
     lssdp->sock = -1;
+
+    // force clean up neighbor_list
+    if (lssdp->neighbor_list != NULL) {
+        lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
+
+        // invoke neighbor list changed callback
+        if (lssdp->neighbor_list_changed_callback != NULL) {
+            lssdp->neighbor_list_changed_callback(lssdp);
+        }
+    }
+
     return 0;
 }
 
