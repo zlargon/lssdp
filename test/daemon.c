@@ -3,7 +3,6 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>     // select
-#include <arpa/inet.h>  // sockaddr_in
 #include <sys/time.h>   // gettimeofday
 #include "lssdp.h"
 
@@ -60,7 +59,7 @@ int show_interface_list_and_rebind_socket(lssdp_ctx * lssdp) {
     puts("\nNetwork Interface List:");
     int i;
     for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
-        printf("%d. %s : %s\n",
+        printf("%d. %-6s: %s\n",
             i + 1,
             lssdp->interface[i].name,
             lssdp->interface[i].ip

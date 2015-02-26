@@ -1,0 +1,46 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>     // sleep
+#include "lssdp.h"
+
+/* network_interface.c
+ *
+ * 1. call lssdp_network_interface_update per second
+ * 2. when network interface is changed, show interface list
+ */
+
+int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
+    printf("[%-5s][%s] %s", level, tag, message);
+    return 0;
+}
+
+int show_interface_list(lssdp_ctx * lssdp) {
+    puts("\nNetwork Interface List:");
+    int i;
+    for (i = 0; i < LSSDP_INTERFACE_LIST_SIZE && strlen(lssdp->interface[i].name) > 0; i++) {
+        printf("%d. %-6s: %s\n",
+            i + 1,
+            lssdp->interface[i].name,
+            lssdp->interface[i].ip
+        );
+    }
+    printf("%s\n", i == 0 ? "Empty" : "");
+    return 0;
+}
+
+int main() {
+    lssdp_set_log_callback(log_callback);
+
+    lssdp_ctx lssdp = {
+        .network_interface_changed_callback = show_interface_list
+    };
+
+    // Main Loop
+    for (;; sleep(1)) {
+        puts(".");
+        lssdp_network_interface_update(&lssdp);
+    }
+
+    return EXIT_SUCCESS;
+}
