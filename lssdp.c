@@ -132,7 +132,11 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
             // set interface
             snprintf(lssdp->interface[n].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifa->ifa_name); // name
             snprintf(lssdp->interface[n].ip,   LSSDP_IP_LEN,             "%s", ip);            // ip string
-            lssdp->interface[n].s_addr = addr->sin_addr.s_addr;                                // address in network byte order
+            lssdp->interface[n].addr = addr->sin_addr.s_addr;                                  // address in network byte order
+
+            // set network mask
+            addr = (struct sockaddr_in *) ifa->ifa_netmask;
+            lssdp->interface[n].netmask = addr->sin_addr.s_addr;                               // mask in network byte order
 
             // increase interface number
             lssdp->interface_num++;
@@ -280,7 +284,7 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
     // ignore the SSDP packet received from self
     size_t i;
     for (i = 0; i < lssdp->interface_num; i++) {
-        if (lssdp->interface[i].s_addr == address.sin_addr.s_addr) {
+        if (lssdp->interface[i].addr == address.sin_addr.s_addr) {
             result = 0;
             goto end;
         }
@@ -358,7 +362,7 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         struct lssdp_interface * interface = &lssdp->interface[i];
 
         // avoid sending multicast to localhost
-        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
+        if (interface->addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
 
@@ -390,7 +394,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
         struct lssdp_interface * interface = &lssdp->interface[i];
 
         // avoid sending multicast to localhost
-        if (interface->s_addr == inet_addr(Global.ADDR_LOCALHOST)) {
+        if (interface->addr == inet_addr(Global.ADDR_LOCALHOST)) {
             continue;
         }
 
@@ -540,7 +544,7 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
     // 2. bind socket
     struct sockaddr_in addr = {
         .sin_family      = AF_INET,
-        .sin_addr.s_addr = interface.s_addr
+        .sin_addr.s_addr = interface.addr
     };
     if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         lssdp_error("bind failed, errno = %s (%d)\n", strerror(errno), errno);
@@ -595,7 +599,7 @@ static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address) {
     struct lssdp_interface * interface = NULL;
     size_t i;
     for (i = 0; i < lssdp->interface_num; i++) {
-        if ((lssdp->interface[i].s_addr & mask) == (address.sin_addr.s_addr & mask)) {
+        if ((lssdp->interface[i].addr & mask) == (address.sin_addr.s_addr & mask)) {
             interface = &lssdp->interface[i];
             break;
         }

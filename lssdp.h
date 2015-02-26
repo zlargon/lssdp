@@ -35,7 +35,8 @@ typedef struct lssdp_ctx {
     struct lssdp_interface {
         char        name        [LSSDP_INTERFACE_NAME_LEN]; // name[16]
         char        ip          [LSSDP_IP_LEN];             // ip[16] = "xxx.xxx.xxx.xxx"
-        uint32_t    s_addr;                                 // address in network byte order
+        uint32_t    addr;                                   // address in network byte order
+        uint32_t    netmask;                                // mask in network byte order
     } interface[LSSDP_INTERFACE_LIST_SIZE];                 // interface[16]
 
     /* SSDP Header Fields */
