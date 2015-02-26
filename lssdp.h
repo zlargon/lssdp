@@ -1,8 +1,8 @@
 #ifndef __LSSDP_H
 #define __LSSDP_H
 
-#include <stdbool.h>
-#include <stdint.h>     // uint32_t
+#include <stdbool.h>  // bool, true, false
+#include <stdint.h>   // uint32_t
 
 /* Struct : lssdp_nbr */
 #define LSSDP_FIELD_LEN         128

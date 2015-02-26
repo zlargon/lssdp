@@ -1,16 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
+#include <stdio.h>      // snprintf, vsnprintf
+#include <stdlib.h>     // malloc, free
+#include <stdarg.h>     // va_start, va_end, va_list
+#include <string.h>     // memset, memcpy, strlen, strcpy, strcmp, strncasecmp, strerror
 #include <ctype.h>      // isprint, isspace
-#include <errno.h>
-
+#include <errno.h>      // errno
 #include <unistd.h>     // close
-#include <arpa/inet.h>  // inet_ntop
-#include <ifaddrs.h>    // getifaddrs, freeifaddrs
-#include <sys/ioctl.h>  // ioctl, SIOCGIFCONF
 #include <sys/time.h>   // gettimeofday
-#include <net/if.h>     // struct ifconf, struct ifreq
+#include <sys/ioctl.h>  // ioctl, FIONBIO
+#include <sys/socket.h> // struct sockaddr, AF_INET, SOL_SOCKET, socklen_t, setsockopt, socket, bind, sendto, recvfrom
+#include <netinet/in.h> // struct sockaddr_in, struct ip_mreq, INADDR_ANY, IPPROTO_IP, also include <sys/socket.h>
+#include <arpa/inet.h>  // inet_aton, inet_ntop, inet_addr, also include <netinet/in.h>
+#include <ifaddrs.h>    // getifaddrs, freeifaddrs
 #include "lssdp.h"
 
 
