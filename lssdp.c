@@ -98,6 +98,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
     memcpy(original_interface, lssdp->interface, SIZE_OF_INTERFACE_LIST);
 
     // 2. reset lssdp->interface
+    lssdp->interface_num = 0;
     memset(lssdp->interface, 0, SIZE_OF_INTERFACE_LIST);
 
     // 3. getifaddrs
@@ -108,7 +109,6 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
     }
 
     // 4. setup lssdp->interface
-    int num = 0;
     struct ifaddrs * ifa;
     for (ifa = ifap; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr->sa_family != AF_INET) {
@@ -124,19 +124,19 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
         }
 
         // too many network interface
-        if (num >= LSSDP_INTERFACE_LIST_SIZE) {
-            lssdp_warn("the number of network interface is over than max size %d\n", LSSDP_INTERFACE_LIST_SIZE);
-            lssdp_debug("%2d. %s : %s\n", num, ifa->ifa_name, ip);
-            break;
+        if (lssdp->interface_num >= LSSDP_INTERFACE_LIST_SIZE) {
+            lssdp_warn("interface number is over than MAX SIZE (%d)     %s %s\n", LSSDP_INTERFACE_LIST_SIZE, ifa->ifa_name, ip);
         } else {
-            // set interface
-            snprintf(lssdp->interface[num].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifa->ifa_name); // name
-            snprintf(lssdp->interface[num].ip,   LSSDP_IP_LEN,             "%s", ip);            // ip string
-            lssdp->interface[num].s_addr = addr->sin_addr.s_addr;                                // address in network byte order
-        }
+            size_t n = lssdp->interface_num;
 
-        // increase interface number
-        num++;
+            // set interface
+            snprintf(lssdp->interface[n].name, LSSDP_INTERFACE_NAME_LEN, "%s", ifa->ifa_name); // name
+            snprintf(lssdp->interface[n].ip,   LSSDP_IP_LEN,             "%s", ip);            // ip string
+            lssdp->interface[n].s_addr = addr->sin_addr.s_addr;                                // address in network byte order
+
+            // increase interface number
+            lssdp->interface_num++;
+        }
     }
     freeifaddrs(ifap);
 

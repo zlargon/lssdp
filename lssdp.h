@@ -31,6 +31,7 @@ typedef struct lssdp_ctx {
     bool            debug;                                  // show debug log
 
     /* Network Interface */
+    size_t          interface_num;                          // interface number
     struct lssdp_interface {
         char        name        [LSSDP_INTERFACE_NAME_LEN]; // name[16]
         char        ip          [LSSDP_IP_LEN];             // ip[16] = "xxx.xxx.xxx.xxx"
