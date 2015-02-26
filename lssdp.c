@@ -424,7 +424,6 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             "USN:%s\r\n"
             "SM_ID:%s\r\n"
             "DEV_TYPE:%s\r\n"
-            "ST:%s\r\n"                                 // Forward Compatbility
             "\r\n",
             Global.HEADER_NOTIFY,                       // HEADER
             Global.ADDR_MULTICAST, lssdp->port,         // HOST
@@ -434,8 +433,7 @@ int lssdp_send_notify(lssdp_ctx * lssdp) {
             lssdp->header.search_target,                // NT (Notify Type)
             lssdp->header.unique_service_name,          // USN
             lssdp->header.sm_id,                        // SM_ID    (addtional field)
-            lssdp->header.device_type,                  // DEV_TYPE (addtional field)
-            lssdp->header.search_target                 // ST (Search Target)
+            lssdp->header.device_type                   // DEV_TYPE (addtional field)
         );
 
         // send NOTIFY
