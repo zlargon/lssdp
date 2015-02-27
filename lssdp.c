@@ -173,6 +173,11 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    if (lssdp->port == 0) {
+        lssdp_error("SSDP port (%d) has not been setup.\n", lssdp->port);
+        return -1;
+    }
+
     // close original SSDP socket
     lssdp_socket_close(lssdp);
 
@@ -188,7 +193,7 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
     // set non-blocking
     int opt = 1;
     if (ioctl(lssdp->sock, FIONBIO, &opt) != 0) {
-        lssdp_error("ioctl failed, errno = %s (%d)\n", strerror(errno), errno);
+        lssdp_error("ioctl FIONBIO failed, errno = %s (%d)\n", strerror(errno), errno);
         goto end;
     }
 
@@ -219,7 +224,7 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
         goto end;
     }
 
-    lssdp_debug("create SSDP socket %d\n", lssdp->sock);
+    lssdp_info("create SSDP socket %d\n", lssdp->sock);
     result = 0;
 end:
     if (result == -1) {
@@ -262,9 +267,14 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    // check socket
-    if (lssdp->sock < 0) {
-        lssdp_error("lssdp->sock (%d) has not been setup.\n", lssdp->sock);
+    // check socket and port
+    if (lssdp->sock <= 0) {
+        lssdp_error("SSDP socket (%d) has not been setup.\n", lssdp->sock);
+        return -1;
+    }
+
+    if (lssdp->port == 0) {
+        lssdp_error("SSDP port (%d) has not been setup.\n", lssdp->port);
         return -1;
     }
 
@@ -334,6 +344,11 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
         return -1;
     }
 
+    if (lssdp->port == 0) {
+        lssdp_error("SSDP port (%d) has not been setup.\n", lssdp->port);
+        return -1;
+    }
+
     // check network inerface number
     if (lssdp->interface_num == 0) {
         lssdp_warn("Network Interface is empty, no destination to send %s\n", Global.MSEARCH);
@@ -379,6 +394,11 @@ int lssdp_send_msearch(lssdp_ctx * lssdp) {
 int lssdp_send_notify(lssdp_ctx * lssdp) {
     if (lssdp == NULL) {
         lssdp_error("lssdp should not be NULL\n");
+        return -1;
+    }
+
+    if (lssdp->port == 0) {
+        lssdp_error("SSDP port (%d) has not been setup.\n", lssdp->port);
         return -1;
     }
 
