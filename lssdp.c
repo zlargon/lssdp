@@ -37,7 +37,7 @@ typedef struct lssdp_packet {
 
 
 /** Internal Function **/
-static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port);
+static int send_multicast_data(const char * data, const struct lssdp_interface interface, unsigned short ssdp_port);
 static int lssdp_send_response(lssdp_ctx * lssdp, struct sockaddr_in address);
 static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet * packet);
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
@@ -496,7 +496,7 @@ int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag,
 
 /** Internal Function **/
 
-static int send_multicast_data(const char * data, const struct lssdp_interface interface, int ssdp_port) {
+static int send_multicast_data(const char * data, const struct lssdp_interface interface, unsigned short ssdp_port) {
     if (data == NULL) {
         lssdp_error("data should not be NULL\n");
         return -1;
@@ -510,11 +510,6 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
 
     if (strlen(interface.name) == 0) {
         lssdp_error("interface.name should not be empty\n");
-        return -1;
-    }
-
-    if (ssdp_port < 0 || ssdp_port > 0xFFFF) {
-        lssdp_error("ssdp_port (%d) is invalid\n");
         return -1;
     }
 

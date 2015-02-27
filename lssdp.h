@@ -25,7 +25,7 @@ typedef struct lssdp_nbr {
 #define LSSDP_IP_LEN                16
 typedef struct lssdp_ctx {
     int             sock;                                   // SSDP socket
-    int             port;                                   // SSDP port
+    unsigned short  port;                                   // SSDP port (0x0000 ~ 0xFFFF)
     lssdp_nbr *     neighbor_list;                          // SSDP neighbor list
     long            neighbor_timeout;                       // milliseconds
     bool            debug;                                  // show debug log
