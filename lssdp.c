@@ -235,9 +235,10 @@ int lssdp_socket_close(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    if (lssdp->sock < 0) {
-        // socket is already close
-        return 0;
+    // check lssdp->sock
+    if (lssdp->sock <= 0) {
+        lssdp_warn("SSDP socket is %d, ignore socket_close request.\n", lssdp->sock);
+        goto end;
     }
 
     // close socket
@@ -246,12 +247,11 @@ int lssdp_socket_close(lssdp_ctx * lssdp) {
         return -1;
     };
 
-    lssdp_debug("close SSDP socket %d\n", lssdp->sock);
+    // close socket success
+    lssdp_info("close SSDP socket %d\n", lssdp->sock);
+end:
     lssdp->sock = -1;
-
-    // force clean up neighbor_list
-    lssdp_neighbor_remove_all(lssdp);
-
+    lssdp_neighbor_remove_all(lssdp);  // force clean up neighbor_list
     return 0;
 }
 

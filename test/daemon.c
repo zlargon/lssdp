@@ -82,7 +82,6 @@ int main() {
 
     lssdp_ctx lssdp = {
         // .debug = true,           // debug
-        .sock = -1,
         .port = 1900,
         .neighbor_timeout = 15000,  // 15 seconds
         .header = {

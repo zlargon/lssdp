@@ -65,7 +65,6 @@ int main() {
     lssdp_set_log_callback(log_callback);
 
     lssdp_ctx lssdp = {
-        .sock = -1,
         .port = 1900,
         // .debug = true,           // debug
 
