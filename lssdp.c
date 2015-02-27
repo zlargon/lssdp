@@ -46,7 +46,8 @@ static int trim_spaces(const char * string, size_t * start, size_t * end);
 static long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
-static void * neighbor_list_free(lssdp_nbr * list);
+static int lssdp_neighbor_remove_all(lssdp_ctx * lssdp);
+static void neighbor_list_free(lssdp_nbr * list);
 static struct lssdp_interface * find_interface_in_LAN(lssdp_ctx * lssdp, uint32_t address);
 
 
@@ -155,14 +156,7 @@ int lssdp_network_interface_update(lssdp_ctx * lssdp) {
     /* Network Interface is changed */
 
     // 1. force clean up neighbor_list
-    if (lssdp->neighbor_list != NULL) {
-        lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
-
-        // invoke neighbor list changed callback
-        if (lssdp->neighbor_list_changed_callback != NULL) {
-            lssdp->neighbor_list_changed_callback(lssdp);
-        }
-    }
+    lssdp_neighbor_remove_all(lssdp);
 
     // 2. invoke network interface changed callback
     if (lssdp->network_interface_changed_callback != NULL) {
@@ -256,14 +250,7 @@ int lssdp_socket_close(lssdp_ctx * lssdp) {
     lssdp->sock = -1;
 
     // force clean up neighbor_list
-    if (lssdp->neighbor_list != NULL) {
-        lssdp->neighbor_list = neighbor_list_free(lssdp->neighbor_list);    // always return NULL
-
-        // invoke neighbor list changed callback
-        if (lssdp->neighbor_list_changed_callback != NULL) {
-            lssdp->neighbor_list_changed_callback(lssdp);
-        }
-    }
+    lssdp_neighbor_remove_all(lssdp);
 
     return 0;
 }
@@ -893,12 +880,29 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
     return 0;
 }
 
-static void * neighbor_list_free(lssdp_nbr * list) {
+static int lssdp_neighbor_remove_all(lssdp_ctx * lssdp) {
+    if (lssdp->neighbor_list == NULL) {
+        return 0;
+    }
+
+    // free neighbor_list
+    neighbor_list_free(lssdp->neighbor_list);
+    lssdp->neighbor_list = NULL;
+
+    lssdp_info("neighbor list has been force clean up.\n");
+
+    // invoke neighbor list changed callback
+    if (lssdp->neighbor_list_changed_callback != NULL) {
+        lssdp->neighbor_list_changed_callback(lssdp);
+    }
+    return 0;
+}
+
+static void neighbor_list_free(lssdp_nbr * list) {
     if (list != NULL) {
         neighbor_list_free(list->next);
         free(list);
     }
-    return NULL;
 }
 
 static struct lssdp_interface * find_interface_in_LAN(lssdp_ctx * lssdp, uint32_t address) {
