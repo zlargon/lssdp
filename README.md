@@ -11,6 +11,8 @@ The Simple Service Discovery Protocol (SSDP) is a network protocol based on the 
 
 * Linux Ubuntu
 * MAC OSX
+* Android
+* iOS
 
 ====
 
@@ -26,7 +28,9 @@ cd test
 
 ====
 
-#### lssdp_ctx: lssdp context
+#### lssdp_ctx:
+
+lssdp context
 
 **port** - SSDP UDP port, 1900 port is general.
 
