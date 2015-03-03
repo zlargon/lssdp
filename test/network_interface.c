@@ -19,10 +19,14 @@ int show_interface_list(lssdp_ctx * lssdp) {
     printf("\nNetwork Interface List (%zu):\n", lssdp->interface_num);
     size_t i;
     for (i = 0; i < lssdp->interface_num; i++) {
-        printf("%zu. %-6s: %s\n",
+        printf("%zu. %-6s: %-15s (%d.%d.%d.%d)\n",
             i + 1,
             lssdp->interface[i].name,
-            lssdp->interface[i].ip
+            lssdp->interface[i].ip,
+            (lssdp->interface[i].netmask >> 0)  & 0xff,
+            (lssdp->interface[i].netmask >> 8)  & 0xff,
+            (lssdp->interface[i].netmask >> 16) & 0xff,
+            (lssdp->interface[i].netmask >> 24) & 0xff
         );
     }
     printf("%s\n", i == 0 ? "Empty" : "");
