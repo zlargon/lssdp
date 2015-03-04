@@ -14,7 +14,7 @@ typedef struct lssdp_nbr {
     /* Additional SSDP Header Fields */
     char            sm_id       [LSSDP_FIELD_LEN];
     char            device_type [LSSDP_FIELD_LEN];
-    unsigned long   update_time;
+    long long       update_time;
     struct lssdp_nbr * next;
 } lssdp_nbr;
 

@@ -35,7 +35,7 @@ typedef struct lssdp_packet {
     /* Additional SSDP Header Fields */
     char            sm_id       [LSSDP_FIELD_LEN];
     char            device_type [LSSDP_FIELD_LEN];
-    unsigned long   update_time;
+    long long       update_time;
 } lssdp_packet;
 
 
@@ -46,7 +46,7 @@ static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet 
 static int parse_field_line(const char * data, size_t start, size_t end, lssdp_packet * packet);
 static int get_colon_index(const char * string, size_t start, size_t end);
 static int trim_spaces(const char * string, size_t * start, size_t * end);
-static long get_current_time();
+static long long get_current_time();
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 static int lssdp_neighbor_remove_all(lssdp_ctx * lssdp);
@@ -506,8 +506,9 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
         return 0;
     }
 
-    long current_time = get_current_time();
+    long long current_time = get_current_time();
     if (current_time < 0) {
+        lssdp_error("got invalid timestamp %lld\n", current_time);
         return -1;
     }
 
@@ -726,8 +727,9 @@ static int lssdp_packet_parser(const char * data, size_t data_len, lssdp_packet 
     }
 
     // 3. set update_time
-    long current_time = get_current_time();
+    long long current_time = get_current_time();
     if (current_time < 0) {
+        lssdp_error("got invalid timestamp %lld\n", current_time);
         return -1;
     }
     packet->update_time = current_time;
@@ -836,13 +838,13 @@ static int trim_spaces(const char * string, size_t * start, size_t * end) {
     return 0;
 }
 
-static long get_current_time() {
+static long long get_current_time() {
     struct timeval time = {};
     if (gettimeofday(&time, NULL) == -1) {
         lssdp_error("gettimeofday failed, errno = %s (%d)\n", strerror(errno), errno);
         return -1;
     }
-    return (time.tv_sec * 1000) + (time.tv_usec / 1000);
+    return (long long) time.tv_sec * 1000 + (long long) time.tv_usec / 1000;
 }
 
 static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {

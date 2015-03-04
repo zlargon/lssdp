@@ -24,13 +24,13 @@ int log_callback(const char * file, const char * tag, const char * level, int li
     return 0;
 }
 
-long get_current_time() {
+long long get_current_time() {
     struct timeval time = {};
     if (gettimeofday(&time, NULL) == -1) {
         printf("gettimeofday failed, errno = %s (%d)\n", strerror(errno), errno);
         return -1;
     }
-    return (time.tv_sec * 1000) + (time.tv_usec / 1000);
+    return (long long) time.tv_sec * 1000 + (long long) time.tv_usec / 1000;
 }
 
 int show_interface_list_and_rebind_socket(lssdp_ctx * lssdp) {
@@ -78,8 +78,11 @@ int main() {
      */
     lssdp_network_interface_update(&lssdp);
 
-    long last_time = get_current_time();
-    if (last_time < 0) return EXIT_SUCCESS;
+    long long last_time = get_current_time();
+    if (last_time < 0) {
+        printf("got invalid timestamp %lld\n", last_time);
+        return EXIT_SUCCESS;
+    }
 
     // Main Loop
     for (;;) {
@@ -101,8 +104,11 @@ int main() {
         }
 
         // get current time
-        long current_time = get_current_time();
-        if (current_time < 0) break;
+        long long current_time = get_current_time();
+        if (current_time < 0) {
+            printf("got invalid timestamp %lld\n", current_time);
+            break;
+        }
 
         // doing task per 5 seconds
         if (current_time - last_time >= 5000) {
