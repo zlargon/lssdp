@@ -868,6 +868,7 @@ static int lssdp_log(const char * level, int line, const char * func, const char
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
     lssdp_nbr * last_nbr = lssdp->neighbor_list;
 
+    bool is_changed = false;
     lssdp_nbr * nbr;
     for (nbr = lssdp->neighbor_list; nbr != NULL; last_nbr = nbr, nbr = nbr->next) {
         if (strcmp(nbr->location, packet.location) != 0) {
@@ -879,25 +880,28 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
 
         // usn
         if (strcmp(nbr->usn, packet.usn) != 0) {
-            lssdp_warn("neighbor usn was changed. %s -> %s\n", nbr->usn, packet.usn);
+            lssdp_debug("neighbor usn is changed. (%s -> %s)\n", nbr->usn, packet.usn);
             memcpy(nbr->usn, packet.usn, LSSDP_FIELD_LEN);
+            is_changed = true;
         }
 
         // sm_id
         if (strcmp(nbr->sm_id, packet.sm_id) != 0) {
-            lssdp_warn("neighbor sm_id was changed. %s -> %s\n", nbr->sm_id, packet.sm_id);
+            lssdp_debug("neighbor sm_id is changed. (%s -> %s)\n", nbr->sm_id, packet.sm_id);
             memcpy(nbr->sm_id, packet.sm_id, LSSDP_FIELD_LEN);
+            is_changed = true;
         }
 
         // device type
         if (strcmp(nbr->device_type, packet.device_type) != 0) {
-            lssdp_warn("neighbor device_type was changed. %s -> %s\n", nbr->device_type, packet.device_type);
+            lssdp_debug("neighbor device_type is changed. (%s -> %s)\n", nbr->device_type, packet.device_type);
             memcpy(nbr->device_type, packet.device_type, LSSDP_FIELD_LEN);
+            is_changed = true;
         }
 
         // update_time
         nbr->update_time = packet.update_time;
-        return 0;
+        goto end;
     }
 
 
@@ -926,8 +930,10 @@ static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet) {
         last_nbr->next = nbr;
     }
 
+    is_changed = true;
+end:
     // invoke neighbor list changed callback
-    if (lssdp->neighbor_list_changed_callback != NULL) {
+    if (lssdp->neighbor_list_changed_callback != NULL && is_changed == true) {
         lssdp->neighbor_list_changed_callback(lssdp);
     }
 
