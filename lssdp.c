@@ -67,7 +67,7 @@ static struct {
     const char * ADDR_LOCALHOST;
     const char * ADDR_MULTICAST;
 
-    int (* log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
+    void (* log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
 
 } Global = {
     // SSDP Method
@@ -546,9 +546,8 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
 }
 
 // 08. lssdp_set_log_callback
-int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
+void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
     Global.log_callback = callback;
-    return 0;
 }
 
 

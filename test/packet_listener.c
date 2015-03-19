@@ -19,9 +19,8 @@
  *    - re-bind the socket
  */
 
-int log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
+void log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
     printf("[%-5s][%s] %s", level, tag, message);
-    return 0;
 }
 
 long long get_current_time() {

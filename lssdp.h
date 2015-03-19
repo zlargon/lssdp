@@ -178,8 +178,7 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp);
  * setup SSDP log callback. All SSDP library log will be forward to here.
  *
  * @param callback
- * @return = 0    success
  */
-int lssdp_set_log_callback(int (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
+void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
 
 #endif
