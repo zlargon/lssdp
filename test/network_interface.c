@@ -10,8 +10,13 @@
  * 2. when network interface is changed, show interface list
  */
 
-void log_callback(const char * file, const char * tag, const char * level, int line, const char * func, const char * message) {
-    printf("[%-5s][%s] %s", level, tag, message);
+void log_callback(const char * file, const char * tag, int level, int line, const char * func, const char * message) {
+    char * level_name = "DEBUG";
+    if (level == LSSDP_LOG_INFO)   level_name = "INFO";
+    if (level == LSSDP_LOG_WARN)   level_name = "WARN";
+    if (level == LSSDP_LOG_ERROR)  level_name = "ERROR";
+
+    printf("[%-5s][%s] %s", level_name, tag, message);
 }
 
 int show_interface_list(lssdp_ctx * lssdp) {

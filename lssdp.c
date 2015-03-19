@@ -19,10 +19,10 @@
 
 /** Definition **/
 #define LSSDP_BUFFER_LEN    2048
-#define lssdp_debug(fmt, agrs...) lssdp_log("DEBUG", __LINE__, __func__, fmt, ##agrs)
-#define lssdp_info(fmt, agrs...)  lssdp_log("INFO",  __LINE__, __func__, fmt, ##agrs)
-#define lssdp_warn(fmt, agrs...)  lssdp_log("WARN",  __LINE__, __func__, fmt, ##agrs)
-#define lssdp_error(fmt, agrs...) lssdp_log("ERROR", __LINE__, __func__, fmt, ##agrs)
+#define lssdp_debug(fmt, agrs...) lssdp_log(LSSDP_LOG_DEBUG, __LINE__, __func__, fmt, ##agrs)
+#define lssdp_info(fmt, agrs...)  lssdp_log(LSSDP_LOG_INFO,  __LINE__, __func__, fmt, ##agrs)
+#define lssdp_warn(fmt, agrs...)  lssdp_log(LSSDP_LOG_WARN,  __LINE__, __func__, fmt, ##agrs)
+#define lssdp_error(fmt, agrs...) lssdp_log(LSSDP_LOG_ERROR, __LINE__, __func__, fmt, ##agrs)
 
 
 /** Struct: lssdp_packet **/
@@ -47,7 +47,7 @@ static int parse_field_line(const char * data, size_t start, size_t end, lssdp_p
 static int get_colon_index(const char * string, size_t start, size_t end);
 static int trim_spaces(const char * string, size_t * start, size_t * end);
 static long long get_current_time();
-static int lssdp_log(const char * level, int line, const char * func, const char * format, ...);
+static int lssdp_log(int level, int line, const char * func, const char * format, ...);
 static int neighbor_list_add(lssdp_ctx * lssdp, const lssdp_packet packet);
 static int lssdp_neighbor_remove_all(lssdp_ctx * lssdp);
 static void neighbor_list_free(lssdp_nbr * list);
@@ -67,7 +67,7 @@ static struct {
     const char * ADDR_LOCALHOST;
     const char * ADDR_MULTICAST;
 
-    void (* log_callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message);
+    void (* log_callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message);
 
 } Global = {
     // SSDP Method
@@ -546,7 +546,7 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp) {
 }
 
 // 08. lssdp_set_log_callback
-void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message)) {
+void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message)) {
     Global.log_callback = callback;
 }
 
@@ -846,7 +846,7 @@ static long long get_current_time() {
     return (long long) time.tv_sec * 1000 + (long long) time.tv_usec / 1000;
 }
 
-static int lssdp_log(const char * level, int line, const char * func, const char * format, ...) {
+static int lssdp_log(int level, int line, const char * func, const char * format, ...) {
     if (Global.log_callback == NULL) {
         return -1;
     }

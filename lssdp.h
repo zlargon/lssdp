@@ -4,6 +4,14 @@
 #include <stdbool.h>  // bool, true, false
 #include <stdint.h>   // uint32_t
 
+// LSSDP Log Level
+enum LSSDP_LOG {
+    LSSDP_LOG_DEBUG = 1 << 0,
+    LSSDP_LOG_INFO  = 1 << 1,
+    LSSDP_LOG_WARN  = 1 << 2,
+    LSSDP_LOG_ERROR = 1 << 3
+};
+
 /* Struct : lssdp_nbr */
 #define LSSDP_FIELD_LEN         128
 #define LSSDP_LOCATION_LEN      256
@@ -179,6 +187,6 @@ int lssdp_neighbor_check_timeout(lssdp_ctx * lssdp);
  *
  * @param callback
  */
-void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, const char * level, int line, const char * func, const char * message));
+void lssdp_set_log_callback(void (* callback)(const char * file, const char * tag, int level, int line, const char * func, const char * message));
 
 #endif
