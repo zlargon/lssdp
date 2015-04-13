@@ -325,13 +325,10 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
         return -1;
     }
 
-    int result = -1;
-
     // ignore the SSDP packet received from self
     size_t i;
     for (i = 0; i < lssdp->interface_num; i++) {
         if (lssdp->interface[i].addr == address.sin_addr.s_addr) {
-            result = 0;
             goto end;
         }
     }
@@ -354,7 +351,6 @@ int lssdp_socket_read(lssdp_ctx * lssdp) {
     // M-SEARCH: send RESPONSE back
     if (strcmp(packet.method, Global.MSEARCH) == 0) {
         lssdp_send_response(lssdp, address);
-        result = 0;
         goto end;
     }
 
@@ -371,7 +367,7 @@ end:
         lssdp->packet_received_callback(lssdp, buffer, recv_len);
     }
 
-    return result;
+    return 0;
 }
 
 // 05. lssdp_send_msearch
