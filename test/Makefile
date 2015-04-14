@@ -1,4 +1,7 @@
 CFLAGS = -g -Wall -I../
+ifdef OSX
+CFLAGS += -D__MAC__ -D__IOS__
+endif
 
 OBJS = ../lssdp.o
 

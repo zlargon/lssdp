@@ -11,6 +11,7 @@
 #include <sys/socket.h> // struct sockaddr, AF_INET, SOL_SOCKET, socklen_t, setsockopt, socket, bind, sendto, recvfrom
 #include <netinet/in.h> // struct sockaddr_in, struct ip_mreq, INADDR_ANY, IPPROTO_IP, also include <sys/socket.h>
 #include <arpa/inet.h>  // inet_aton, inet_ntop, inet_addr, also include <netinet/in.h>
+#include <resolv.h>     // res_init, also include <arpa/nameser.h>
 #include "lssdp.h"
 
 #ifndef _SIZEOF_ADDR_IFREQ
@@ -192,10 +193,16 @@ end:
 
     /* Network Interface is changed */
 
-    // 1. force clean up neighbor_list
+    // 1. reads the configuration files resolv.conf to get the default domain name, search order and name server address.
+    //    http://linux.die.net/man/3/res_init
+#if !defined(__ANDROID__) && !defined(__MAC__) && !defined(__IOS__)
+    res_init();
+#endif
+
+    // 2. force clean up neighbor_list
     lssdp_neighbor_remove_all(lssdp);
 
-    // 2. invoke network interface changed callback
+    // 3. invoke network interface changed callback
     if (lssdp->network_interface_changed_callback != NULL) {
         lssdp->network_interface_changed_callback(lssdp);
     }

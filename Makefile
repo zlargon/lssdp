@@ -1,5 +1,5 @@
 all:
-	$(MAKE) -C test
+	$(MAKE) -C test OSX=$(OSX)
 
 clean:
 	rm -rf *.o
