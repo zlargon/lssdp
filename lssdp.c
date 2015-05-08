@@ -8,6 +8,7 @@
 #include <sys/time.h>   // gettimeofday
 #include <sys/ioctl.h>  // ioctl, FIONBIO
 #include <net/if.h>     // struct ifconf, struct ifreq
+#include <fcntl.h>      // fcntl, F_GETFD, F_SETFD, FD_CLOEXEC
 #include <sys/socket.h> // struct sockaddr, AF_INET, SOL_SOCKET, socklen_t, setsockopt, socket, bind, sendto, recvfrom
 #include <netinet/in.h> // struct sockaddr_in, struct ip_mreq, INADDR_ANY, IPPROTO_IP, also include <sys/socket.h>
 #include <arpa/inet.h>  // inet_aton, inet_ntop, inet_addr, also include <netinet/in.h>
@@ -245,6 +246,17 @@ int lssdp_socket_create(lssdp_ctx * lssdp) {
     if (setsockopt(lssdp->sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
         lssdp_error("setsockopt SO_REUSEADDR failed, errno = %s (%d)\n", strerror(errno), errno);
         goto end;
+    }
+
+    // set FD_CLOEXEC (http://kaivy2001.pixnet.net/blog/post/32726732)
+    int sock_opt = fcntl(lssdp->sock, F_GETFD);
+    if (sock_opt == -1) {
+        lssdp_error("fcntl F_GETFD failed, errno = %s (%d)\n", strerror(errno), errno);
+    } else {
+        // F_SETFD
+        if (fcntl(lssdp->sock, F_SETFD, sock_opt | FD_CLOEXEC) == -1) {
+            lssdp_error("fcntl F_SETFD FD_CLOEXEC failed, errno = %s (%d)\n", strerror(errno), errno);
+        }
     }
 
     // bind socket
