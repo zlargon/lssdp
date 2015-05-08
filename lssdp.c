@@ -582,24 +582,7 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
         goto end;
     }
 
-    // 2. bind socket
-    struct sockaddr_in addr = {
-        .sin_family      = AF_INET,
-        .sin_addr.s_addr = interface.addr
-    };
-    if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        lssdp_error("bind failed, errno = %s (%d)\n", strerror(errno), errno);
-        goto end;
-    }
-
-    // 3. disable IP_MULTICAST_LOOP
-    char opt = 0;
-    if (setsockopt(fd, IPPROTO_IP, IP_MULTICAST_LOOP, &opt, sizeof(opt)) < 0) {
-        lssdp_error("setsockopt IP_MULTICAST_LOOP failed, errno = %s (%d)\n", strerror(errno), errno);
-        goto end;
-    }
-
-    // 4. set destination address
+    // 2. set destination address
     struct sockaddr_in dest_addr = {
         .sin_family = AF_INET,
         .sin_port = htons(ssdp_port)
@@ -609,7 +592,7 @@ static int send_multicast_data(const char * data, const struct lssdp_interface i
         goto end;
     }
 
-    // 5. send data
+    // 3. send data
     if (sendto(fd, data, data_len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr)) == -1) {
         lssdp_error("sendto %s (%s) failed, errno = %s (%d)\n", interface.name, interface.ip, strerror(errno), errno);
         goto end;
